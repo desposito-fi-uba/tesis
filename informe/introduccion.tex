@@ -1,0 +1,57 @@
+\section{Introducción}
+
+\subsection{Descripción}
+
+El presente trabajo analiza e investiga las limitaciones y bondades de dos tipos de filtros de ruidos no estacionarios, presentes en señales de habla.
+
+Se busca comparar una técnica tradicional de filtrado, como es la de los filtros adaptativos con un filtro basado en redes neuronales profundas (DNN). Se los evaluará utilizando una variedad de ruidos no estacionarios presentes en aplicaciones del mundo real con el fin de investigar el comportamiento de cada uno de ellos.
+
+\subsection{Antecedentes}
+
+Usualmente las aplicaciones que trabajan con señales de habla captadas por uno o más micrófonos, como puede ser una aplicación de videoconferencias, poseen distintos tipos de filtros que permiten reducir el ruido presente en la señal de habla y así transmitir una señal de habla más clara. Distintas técnica son usualmente utilizadas para lograr dicho objetivo como puede ser la llamada sustracción espectral \cite{espectral_subtraction} o un filtro de Wiener \cite{philipos_book_speech_enhancement}.
+
+Este tipo de filtros logran su objetivo para ruidos que son del tipo estacionario como puede ser el ruido generado por el sistema de refrigeración de una computadora. Sin embargo fallan cuando la señal de habla se encuentra en un ambiente con ruidos del tipo no estacionario como puede ser el ruido generado por escribir en un teclado, una impresora funcionando, el ladrido de un perro, tráfico, etc.  
+
+En lo que concierne al filtrado de ruidos no estacionarios, algunos trabajos abordaron el problema con técnicas de modelado estadístico como \cite{speech_enhancement_for_non_stationary_noise_environments_using_statistical_estimators}. Sin embargo, los filtros obtenidos por estas técnicas resultan ser sumamente complejos y difíciles de llevar a la práctica.
+
+Por otro lado, los métodos de filtrado adaptativo, los cuales dependen de una señal de referencia, son efectivamente utilizados para cancelar ruidos no-estacionarios \cite{a_family_of_adaptive_filter_slgorithms_in_noise_cancellation_for_speech_enhancement}. La desventaja evidente que posee esta clase de filtros es la necesidad de contar con una señal de referencia de calidad caracterizada por estar correlacionada con el ruido presente en la señal de habla y descorrelacionada con la señal de habla. Estos requerimientos, dependiendo de la aplicación puede que resulten bloqueantes para el uso de esta técnica.
+
+El filtrado de ruidos no estacionarios en señales de habla es un problema de gran complejidad debido a la gran variedad de ruidos que se encuentran en aplicaciones reales. Usualmente las técnicas estudiadas no logran generar un esquema que sea independiente del tipo de ruido o que sea sencillo mejorar el filtro para incorporar nuevos tipos de ruidos.
+
+En los últimos años se ha comenzado a estudiar e investigar el uso de redes neuronales como filtros de ruidos presentes en señales de habla \cite{a_regression_approach_to_speech_enhancement_based_on_deep_neural_networks,speech_enhancement_in_multiple_moise_conditions_using_deep_neural_networks,a_convolutional_recurrent_neural_network_for_real_time_speech_enhancement}. Las redes neuronales utilizadas como filtros de ruido tienen la ventaja de no necesitar un estudio exhaustivo de cada tipo de ruido ya que para su correcto funcionamiento lo único que se necesita es un conjunto de señales que representen eficazmente cada tipo de ruido. A su vez, es muy sencillo mejorar los filtros para abarcar mas tipos de ruidos ya que basta con incorporar tales ruidos al conjunto de entrenamiento.
+
+\subsection{Motivación}
+
+La situación mundial generada por la pandemia del virus COVID-19 aceleró el proceso de digitalización de muchas de las actividades cotidianas del ser humano. Esta revolución está lejos de ser temporal y más bien pasará a ser parte del día a día. La dependencia de aplicaciones que nos permiten interactuar virtualmente, está creciendo y está tomando un rol central.
+
+Este tipo de aplicaciones deben brindar una comunicación clara entre las personas que participan de ella, lo cual lleva a la necesidad de tener técnicas de filtrado de ruido, tanto estacionario como no estacionario.
+
+Grandes empresas como Google y Microsoft, las cuales concentran gran parte de los usuarios que necesitan realizar videoconferencias, están volcando su atención en esta área (\cite{interspeech_2020} y \cite{google_noise_filter}), para brindar mejores experiencia de comunicación virtual.
+
+Estas empresas y muchas otras están desarrollando este tipo de funcionalidad aprovechando el gran desarrollo e investigación que tuvieron las redes neuronales en los últimos diez años y utilizan la flexibilidad que poseen las redes para aprender a realizar transformaciones alineales con gran precisión. Esto lleva a que entender las limitaciones de las distintas técnicas de filtrado resulte esencial.
+
+\subsection{Objetivos}
+\label{sec:objetivos}
+
+El presente trabajo tiene como objetivo principal estudiar el filtrado de ruidos no estacionarios por medio de filtros adaptativos y por medio de filtros neuronales. 
+
+Se busca validar que incluso con un solo micrófono, un modelo de red neuronal es capaz de obtener resultados iguales o mejores a los obtenidos con un filtro adaptativo el cual depende de la utilización de dos micrófonos, uno para captar la señal de habla y otro para captar el ruido ambiente.
+
+Entender las ventajas y desventajas de cada técnica permitiría seguir perfeccionando el filtrado de este tipo de ruidos aprovechando las bondades de cada método.
+
+Para poder lograr el objetivo del trabajo, se desarrollarán ambos filtros y se los evaluará en iguales condiciones para así poder sacar conclusiones sobre el desempeño de cada uno.
+
+Se limitará a estudiar el desempeño de cada filtro en señales de habla corrompidas con cuatro tipos de  ruidos no-estacionarios presentes usualmente en videoconferencias:
+
+\begin{itemize}
+	\item Tipeo: Ruido generado al escribir en un teclado.
+	\item Personas hablando de fondo: Presente usualmente cuando un participante se encuentra en un ambiente público como puede ser un café.
+	\item Ruido de tráfico y a calle: Ruido presente cuando un participante se encuentra en la vía pública.
+	\item Ruidos generados por mascotas: Presentes usualmente en videoconferencias domésticas como por ejemplo el ladrido de un perro o el maullido de un gato.
+\end{itemize}
+
+El desempeño de los filtros se medirá por medio de métricas objetivas usualmente usadas en el área de procesamiento del habla. Las dos métricas utilizadas evalúan el filtro por medio de comparar la señal de habla original, es decir la señal de habla sin ruido, y la señal de habla ruidosa ya procesada por el filtro en evaluación. Las métricas en cuestión son:
+\begin{itemize}
+	\item \emph{Perceptual Evaluation of Speech Quality Measure (PESQ)} \cite{perceptual_evaluation_of_speech_quality_a_new_method_for_speech_quality_assessment_of_telephone_networks_and_codecs} La PESQ es una medida que indica el grado de calidad de la señal procesada respecto a la señal sin ruido.
+	\item \emph{Short-time Objective Intelligibility Measure (STOI)} \cite{a_short_time_objective_intelligibility_measure_for_time_frequency_weighted_noisy_speech} La STOI es una medida que indica el grado de inteligibilidad de la señal procesada respecto a la señal sin ruido. Esta medida está estrechamente relacionada al nivel de compresión que posee una señal de habla.
+\end{itemize}

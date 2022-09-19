@@ -1,0 +1,135 @@
+
+% A LaTeX (non-official) template
+
+\documentclass[a4paper,12pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish]{babel}
+\usepackage{graphicx}
+\graphicspath{{images/}}
+\usepackage{amssymb,amsmath,bbm}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage[]{units}
+\usepackage{array}
+\usepackage{bm}
+\usepackage{float}
+\usepackage{tabularx}
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
+\newcolumntype{C}[1]{>{\centering\arraybackslash}p{#1}}
+\newcolumntype{R}[1]{>{\raggedleft\arraybackslash}p{#1}}
+\usepackage{siunitx}
+% \usepackage{color}
+\usepackage[dvipsnames]{xcolor}
+\usepackage{multirow}
+\usepackage{layouts}
+\usepackage{enumitem}
+\usepackage{geometry}
+\usepackage{verbatim}
+\usepackage{steinmetz}
+\usepackage{hyperref}
+\usepackage[ampersand]{easylist}
+\usepackage{gensymb}
+\usepackage{appendix}
+\usepackage{listings}
+\usepackage{multicol}
+\usepackage{xcolor}
+\usepackage{makecell}
+\usepackage[nottoc,numbib]{tocbibind}
+\usepackage{url}
+\hypersetup{
+    colorlinks,
+    linkcolor={red!50!black},
+    citecolor={blue!50!black},
+    urlcolor={blue!80!black}
+}
+\parskip=5pt
+
+
+\lstdefinestyle{lststyle}{
+  breaklines=true            
+}
+
+\lstset{style=lststyle}
+
+\title{
+	\normalfont \huge 
+	\textsc{UNIVERSIDAD DE BUENOS AIRES \\
+		Facultad de Ingeniería} \\
+	\begin{center}
+		\includegraphics[width=0.5\textwidth]{images/Logo-fiuba_big.png}
+	\end{center}
+	\large \textbf{Tesis} \\
+	\textsc{\large Estudio de sistemas de filtrados de ruidos no estacionarios presentes en señales de habla.}
+}
+
+\begin{document}
+
+\pagenumbering{gobble}
+
+\maketitle
+~
+\begin{center}
+     \centering
+     Espósito, Diego -\ desposito@fi.uba.ar - \ $\#95669$\\
+\end{center}
+
+\rule{\linewidth}{0.3pt} \\[3pt]
+
+\newpage
+
+\input{resumen}
+
+\newpage
+
+\input{agradecimientos}
+
+\newpage
+
+\tableofcontents
+
+\newpage
+
+\pagenumbering{arabic}
+
+\input{introduccion}
+
+\newpage
+
+\input{procesamientodelhabla}
+
+\newpage
+
+\input{tecnicasdefiltrado}
+
+\newpage
+
+\input{metricas}
+
+\newpage
+
+\input{preparacion}
+
+\newpage
+
+\input{experimentacionfiltroadaptativo}
+
+\newpage
+
+\input{experimentacionfiltroneuronal}
+
+\newpage
+
+\input{comparaciondeexperimentacion}
+
+\newpage
+
+
+\input{conclusiones}
+
+\newpage
+
+\bibliographystyle{ieeetr}
+\bibliography{refs}
+
+\end{document}
