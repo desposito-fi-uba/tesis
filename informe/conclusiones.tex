@@ -10,11 +10,15 @@ Dado los resultados obtenidos, lo más razonable sería utilizar el filtro adecu
 
 Respecto de la medida de calidad PESQ y la medida de inteligibilidad STOI, ambos filtros fueron consistentes. A medida que la relación nivel-ruido aumenta o disminuye, las mismas variaciones se vieron en las medidas PESQ y STOI, ya sea con una mejora o con una degradación.
 
+En relación a los tipos de ruido, los filtros no fueron consistentes, es decir, en las clases de ruido donde el filtro neuronal se destacó, el filtro adaptativo no tuvo un buen desempeño y lo mismo sucedió a la inversa. 
+
 \subsection{Trabajo futuro}
 
 El presente trabajo deja abiertos distintos aspectos a profundizar que permitirían seguir desarrollando el filtrado de ruidos en señales de habla. Veamos alguno de ellos.
 
 Para lograr un mayor desempeño en la mejora de la inteligibilidad se debe experimentar con otras funciones de costo para el entrenamiento de la red. En lugar de utilizar el error cuadrático medio, diseñar una función de costo que se encuentre correlacionada directamente con la inteligibilidad. Con esto lograríamos balancear la mejora en la calidad del audio con la mejora en la inteligibilidad y así obtener un resultado final superior.
+
+En relación a las clases de ruido, podría resultar adecuado entrenar el modelo de red neuronal con una mayor cantidad de tipos de ruido para poder filtrar exitosamente clases de ruidos que son muy heterogéneas como lo es el ruido del tipo \emph{Tráfico}.
 
 En el caso de uso del filtro adaptativo donde se cuenta con dos micrófonos, se podría aprovechar de manera más efectiva la información suministrada por ambos micrófonos incluso sin la problemática relacionada con la diafonía. Esto sería, diseñar un modelo de red neuronal que permita procesar ambas señales al mismo tiempo y utilice la información relevante de cada una para lograr generar una señal filtrada superior a la obtenida con un solo micrófono.
 
