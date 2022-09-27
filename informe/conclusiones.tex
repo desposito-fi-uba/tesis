@@ -4,22 +4,22 @@
 
 El objetivo del presente trabajo fue validar la hipótesis de que un modelo de red neuronal, incluso utilizando la información provista por un solo micrófono, es capaz de obtener un nivel de cancelación de ruidos no-estacionarios en señales de habla, igual o mejor al obtenido con un filtro adaptativo.
 
-A bajos niveles de SNR el filtro neuronal no logró el desempeño obtenido con el filtro adaptativo pero a altos niveles de SNR, el filtro neuronal fue superior.
+A bajos niveles de SNR, el filtro neuronal, no logró el desempeño obtenido con el filtro adaptativo, pero a altos niveles de SNR, el filtro neuronal fue superior.
 
-Dado los resultados obtenidos, lo más razonable sería utilizar el filtro adecuado para las condiciones de ruido en las que se está trabajando. En condiciones de alto nivel ruido sería conveniente utilizar un filtro adaptativo y en condiciones de bajo nivel de ruido, utilizar un filtro neuronal. Sin embargo, el filtro neuronal tiene la ventaja tecnológica de no necesitar dos micrófonos por lo que sería interesante trabajar en heurísticas que permitan mejorar el desempeño del filtro neuronal en condiciones de alto nivel de ruido, de manera de lograr desempeños similares o mejores a los del filtro adaptativo.
+Dado los resultados obtenidos, lo más razonable sería utilizar el filtro adecuado para las condiciones de ruido en las que se está trabajando. En condiciones de alto nivel de ruido sería conveniente utilizar un filtro adaptativo y, en condiciones de bajo nivel de ruido, utilizar un filtro neuronal. Sin embargo, el filtro neuronal tiene la ventaja tecnológica de no necesitar dos micrófonos, por lo que sería interesante trabajar en heurísticas que permitan mejorar el desempeño del filtro neuronal en condiciones de alto nivel de ruido, de manera de lograr desempeños similares o mejores a los del filtro adaptativo.
 
 Respecto de la medida de calidad PESQ y la medida de inteligibilidad STOI, ambos filtros fueron consistentes. A medida que la relación nivel-ruido aumenta o disminuye, las mismas variaciones se vieron en las medidas PESQ y STOI, ya sea con una mejora o con una degradación.
 
-En relación a los tipos de ruido, los filtros no fueron consistentes, es decir, en las clases de ruido donde el filtro neuronal se destacó, el filtro adaptativo no tuvo un buen desempeño y lo mismo sucedió a la inversa. 
+En relación a los tipos de ruido los filtros no fueron consistentes, es decir, en las clases de ruido donde el filtro neuronal se destacó, el filtro adaptativo no tuvo un buen desempeño y lo mismo sucedió a la inversa. 
 
 \subsection{Trabajo futuro}
 
-El presente trabajo deja abiertos distintos aspectos a profundizar que permitirían seguir desarrollando el filtrado de ruidos en señales de habla. Veamos alguno de ellos.
+El presente trabajo deja abiertos distintos aspectos a profundizar que permitirían seguir desarrollando el filtrado de ruidos en señales de habla. Veamos algunos de ellos.
 
-Para lograr un mayor desempeño en la mejora de la inteligibilidad se debe experimentar con otras funciones de costo para el entrenamiento de la red. En lugar de utilizar el error cuadrático medio, diseñar una función de costo que se encuentre correlacionada directamente con la inteligibilidad. Con esto lograríamos balancear la mejora en la calidad del audio con la mejora en la inteligibilidad y así obtener un resultado final superior.
+Para lograr un mayor desempeño en la mejora de la inteligibilidad se debe experimentar con otras funciones de costo para el entrenamiento de la red. En lugar de utilizar el error cuadrático medio, diseñar una función de costo que se encuentre correlacionada directamente con la inteligibilidad. Con esto, lograríamos balancear la mejora en la calidad del audio con la mejora en la inteligibilidad y así obtener un resultado final superior.
 
-En relación a las clases de ruido, podría resultar adecuado entrenar el modelo de red neuronal con una mayor cantidad de tipos de ruido para poder filtrar exitosamente clases de ruidos que son muy heterogéneas como lo es el ruido del tipo \emph{Tráfico}.
+En relación a las clases de ruido podría resultar adecuado entrenar el modelo de red neuronal con una mayor cantidad de tipos de ruido, para poder filtrar exitosamente clases de ruidos que son muy heterogéneas, como lo es el ruido del tipo \emph{Tráfico}.
 
-En el caso de uso del filtro adaptativo donde se cuenta con dos micrófonos, se podría aprovechar de manera más efectiva la información suministrada por ambos micrófonos incluso sin la problemática relacionada con la diafonía. Esto sería, diseñar un modelo de red neuronal que permita procesar ambas señales al mismo tiempo y utilice la información relevante de cada una para lograr generar una señal filtrada superior a la obtenida con un solo micrófono.
+En el caso de uso del filtro adaptativo, donde se cuenta con dos micrófonos, se podría aprovechar de manera más efectiva la información suministrada por ambos, incluso sin la problemática relacionada con la diafonía. Esto sería, diseñar un modelo de red neuronal que permita procesar ambas señales al mismo tiempo y utilice la información relevante de cada una para lograr generar una señal filtrada superior a la obtenida con un solo micrófono.
 
-Por último se podría explorar el uso de la red neuronal para predecir los parámetros de un modelo de señal de habla conocido. Por ejemplo se podría utilizar el modelo de la figura \ref{fig:ch3_voice_modeling}. La red en este caso se encargaría de estimar los parámetros del modelo en lugar de estimar directamente la señal de habla.
+Por último se podría explorar el uso de la red neuronal para predecir los parámetros de un modelo de señal de habla conocido. Por ejemplo, se podría utilizar el modelo de la figura \ref{fig:ch3_voice_modeling}. La red en este caso se encargaría de estimar los parámetros del modelo, en lugar de estimar directamente la señal de habla.
