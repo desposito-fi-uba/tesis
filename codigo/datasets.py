@@ -25,9 +25,12 @@ def entry_point():
 
 @entry_point.command()
 @click.option('--max-amount', default=0, required=False, type=int)
-@click.option('--audios-output-dir', default='', required=False, type=str)
-def generate(max_amount, audios_output_dir):
-    dataset_path = join(os.getcwd(), '..', 'raw-dataset', 'clean')
+@click.option('--env', default='train', required=False, type=str)
+def generate(max_amount, env):
+    if env != 'train' and env != 'test':
+        raise RuntimeError(f'Wrong env {env}. Options are train or test')
+
+    dataset_path = join(os.getcwd(), 'raw-dataset', f'clean_{env}')
     speeches_audio_path = [
         join(dataset_path, file_path) for file_path in os.listdir(dataset_path) if isfile(join(dataset_path, file_path))
     ]
@@ -35,23 +38,20 @@ def generate(max_amount, audios_output_dir):
     audios = np.array(speeches_audio_path + speeches_audio_path)
     np.random.shuffle(audios)
 
-    dataset_path = join(os.getcwd(), '..', 'raw-dataset', 'noise')
+    dataset_path = join(os.getcwd(), 'raw-dataset', f'noise_{env}')
     noises = np.asarray(
-        [file_path for file_path in glob.glob('{}/**/*.wav'.format(dataset_path), recursive=True)]
+        [file_path for file_path in glob.glob(f'{dataset_path}/*.wav', recursive=True)]
     )
     np.random.shuffle(noises)
 
     if max_amount > 0:
         audios = audios[:max_amount]
 
-    dataset_path = join(os.getcwd(), '..', 'dataset')
+    dataset_path = join(os.getcwd(), 'dataset')
     if not os.path.isdir(dataset_path):
         os.mkdir(dataset_path)
 
-    if not audios_output_dir:
-        audios_path = join(dataset_path, 'audios')
-    else:
-        audios_path = join(dataset_path, audios_output_dir)
+    audios_path = join(dataset_path, f'audios_{env}')
 
     if not os.path.isdir(audios_path):
         os.mkdir(audios_path)
@@ -62,6 +62,8 @@ def generate(max_amount, audios_output_dir):
     noise = None
     noise_type = None
     sr = 16000
+    silent = 0.2
+    silent_samples = int(sr*silent)
     continue_generating = True
     print('Starting mixing {} clean speeches with {} noises'.format(len(audios), len(noises)))
     for index, audio_path in enumerate(audios):
@@ -77,7 +79,7 @@ def generate(max_amount, audios_output_dir):
             continue
 
         amount_speech_samples = len(clean_speech)
-        noise_to_mix = np.ones((amount_speech_samples, )) * np.finfo(float).eps
+        noise_to_mix = np.zeros((silent_samples + amount_speech_samples, ))
 
         snr_choices = [-5, 0, 5, 10, 15, 20, -5, 0, 5, 10, 15, 20, np.inf]
         snr = snr_choices[np.random.randint(len(snr_choices))]
@@ -93,7 +95,7 @@ def generate(max_amount, audios_output_dir):
                 while continue_reading_noises:
                     try:
                         noise, _ = librosa.load(noises[noise_index], sr=sr)
-                        noise_type = os.path.basename(os.path.dirname(noises[noise_index]))
+                        noise_type = os.path.basename(noises[noise_index]).split('_')[0]
                         continue_reading_noises = False
                         break
                     except Exception:
@@ -104,14 +106,14 @@ def generate(max_amount, audios_output_dir):
             available_noise = noise[amount_noise_used:]
             amount_available_noise = len(available_noise)
             if amount_available_noise > amount_speech_samples:
-                noise_to_mix = available_noise[:amount_speech_samples]
+                noise_to_mix[silent_samples:] = available_noise[:amount_speech_samples]
                 amount_noise_used = amount_noise_used + amount_speech_samples - 1
             elif amount_available_noise == amount_speech_samples:
-                noise_to_mix = available_noise
+                noise_to_mix[silent_samples:] = available_noise
                 amount_noise_used = 0
                 noise_index += 1
             else:
-                noise_to_mix[:amount_available_noise] = available_noise
+                noise_to_mix[silent_samples:amount_available_noise+silent_samples] = available_noise
                 amount_noise_used = 0
                 noise_index += 1
 
@@ -146,54 +148,10 @@ def generate(max_amount, audios_output_dir):
 
     random.shuffle(rows)
 
-    csv_path = join(audios_path, 'metadata.csv')
+    csv_path = join(audios_path, f'{env}.csv')
     with open(csv_path, 'w') as csv_file:
         writer = csv.writer(csv_file)
         for row in rows:
-            writer.writerow(row)
-
-
-@entry_point.command()
-@click.option('--audios-input-dir', default='', required=False, type=str)
-def split(audios_input_dir):
-    if not audios_input_dir:
-        mixed_path = join(os.getcwd(), '..', 'dataset', 'audios')
-    else:
-        mixed_path = join(os.getcwd(), '..', 'dataset', audios_input_dir)
-
-    csv_path = join(mixed_path, 'metadata.csv')
-
-    with open(csv_path, 'r') as csv_file:
-        reader = csv.reader(csv_file)
-        rows = [row for row in reader]
-
-    amount = len(rows)
-    test_amount = int(np.floor(0.3*amount))
-    train_amount = int(np.floor(0.6*amount))
-    val_amount = int(np.floor(0.1*amount))
-
-    rows = np.asarray(rows)
-    np.random.shuffle(rows)
-
-    test_rows = rows[0:test_amount]
-    csv_path = join(mixed_path, 'test.csv')
-    with open(csv_path, 'w') as csv_file:
-        writer = csv.writer(csv_file)
-        for row in test_rows:
-            writer.writerow(row)
-
-    train_rows = rows[test_amount:test_amount+train_amount]
-    csv_path = join(mixed_path, 'train.csv')
-    with open(csv_path, 'w') as csv_file:
-        writer = csv.writer(csv_file)
-        for row in train_rows:
-            writer.writerow(row)
-
-    val_rows = rows[test_amount+train_amount:test_amount+train_amount+val_amount]
-    csv_path = join(mixed_path, 'val.csv')
-    with open(csv_path, 'w') as csv_file:
-        writer = csv.writer(csv_file)
-        for row in val_rows:
             writer.writerow(row)
 
 
