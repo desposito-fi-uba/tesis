@@ -1,6 +1,7 @@
 import math
 import os
 from collections import OrderedDict
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -19,7 +20,7 @@ class RealTimeNoisySpeechDatasetWithTimeFrequencyFeatures(IterableDataset):
         raise NotImplementedError('__getitem__ not implemented')
 
     def __init__(self, base_path, csv_file, fs, windows_time_size, overlap_percentage, fft_points, time_feature_size,
-                 max_samples=None, randomize=False, normalize=False, predict_on_time_windows=None):
+                 device, max_samples=None, randomize=False, normalize=False, predict_on_time_windows=None):
         self.base_path = base_path
         self.samples = pd.read_csv(csv_file)
         self.data_samples = None
@@ -47,10 +48,9 @@ class RealTimeNoisySpeechDatasetWithTimeFrequencyFeatures(IterableDataset):
 
         self.processed_audios = OrderedDict()
 
-        self.max_queue_size = 10
+        self.max_queue_size = 1
 
         self.min_audio_value = 10**-20
-        self.log_min_audio_value = -20
         self.min_value = -25
         self.max_value = 0
         self.normalize_io = normalize
@@ -59,6 +59,7 @@ class RealTimeNoisySpeechDatasetWithTimeFrequencyFeatures(IterableDataset):
         self.snr = None
         self.time_feature_size = time_feature_size
         self.predict_on_time_windows = predict_on_time_windows or self.time_feature_size
+        self.device = device
 
     def __iter__(self):
         self.frame_idx = 0
@@ -89,10 +90,10 @@ class RealTimeNoisySpeechDatasetWithTimeFrequencyFeatures(IterableDataset):
         snr = self.processed_audios[self.sample_idx]['snr']
         noise_type = self.processed_audios[self.sample_idx]['noise_type']
         sample = {
-            'noisy_speech': torch.from_numpy(stft_noisy_frame),
-            'noisy_output_speech': torch.from_numpy(stft_noisy_output_frame),
-            'clean_speech': torch.from_numpy(stft_clean_frame),
-            'noise': torch.from_numpy(stft_noise_frame),
+            'noisy_speech': stft_noisy_frame,
+            'noisy_output_speech': stft_noisy_output_frame,
+            'clean_speech': stft_clean_frame,
+            'noise': stft_noise_frame,
             'audio_name': audio_name,
             'snr': snr,
             'noise_type': noise_type,
@@ -149,8 +150,10 @@ class RealTimeNoisySpeechDatasetWithTimeFrequencyFeatures(IterableDataset):
 
         stft_noisy_speech, stft_phase_noisy_speech, _ = self.prepare_input(noisy_speech)
         stft_noisy_output_speech, noisy_speech = self.prepare_output(noisy_speech)
+        stft_noisy_speech.to(self.device)
 
         stft_clean_speech, clean_speech = self.prepare_output(clean_speech)
+        stft_clean_speech.to(self.device)
 
         stft_noise, noise = self.prepare_output(noise)
 
@@ -187,6 +190,15 @@ class RealTimeNoisySpeechDatasetWithTimeFrequencyFeatures(IterableDataset):
         audio_magnitude_stft = self.normalize(audio_magnitude_stft)
         return audio_magnitude_stft
 
+    def crop_audio(self, audio):
+        mask = np.logical_and(audio >= 0, audio < self.min_audio_value)
+        audio[mask] = self.min_audio_value
+
+        mask = np.logical_and(audio < 0, audio > -self.min_audio_value)
+        audio[mask] = -self.min_audio_value
+
+        return audio
+
     def prepare_input(self, audio):
         audio_size = len(audio)
         frame_size = (self.time_feature_size - 1) * self.overlap_points
@@ -197,22 +209,29 @@ class RealTimeNoisySpeechDatasetWithTimeFrequencyFeatures(IterableDataset):
             constant_values=self.min_audio_value
         )
 
+        audio = self.crop_audio(audio)
+
         audio_frames_complex_stft = np.zeros((self.fft_points//2, self.time_feature_size, amount_frames), dtype=complex)
         _, _, audio_complex_stft = stft(
             audio, fs=self.fs, nperseg=self.windows_points_size, noverlap=self.overlap_points,
             nfft=self.fft_points - 1, return_onesided=True
         )
+
         for i in range(0, amount_frames):
             audio_frames_complex_stft[:, :, i] = audio_complex_stft[:, i*2:self.time_feature_size+(i*2)]
 
         audio_frames_magnitude_stft = np.abs(audio_frames_complex_stft)
-        audio_frames_magnitude_stft[audio_frames_magnitude_stft < self.min_audio_value] = self.min_audio_value
+        # audio_frames_magnitude_stft[audio_frames_magnitude_stft < self.min_audio_value] = self.min_audio_value
         audio_frames_magnitude_stft = np.log10(audio_frames_magnitude_stft).astype(np.float32)
         audio_frames_magnitude_stft = self.normalize(audio_frames_magnitude_stft)
         audio_frames_magnitude_stft = np.expand_dims(audio_frames_magnitude_stft, axis=0)
 
         audio_frames_phase_stft = np.angle(audio_frames_complex_stft)
-        return audio_frames_magnitude_stft, audio_frames_phase_stft, audio[:audio_size]
+        return (
+            torch.from_numpy(audio_frames_magnitude_stft),
+            torch.from_numpy(audio_frames_phase_stft),
+            torch.from_numpy(audio[:audio_size])
+        )
 
     def prepare_output(self, audio):
         audio_size = len(audio)
@@ -224,11 +243,7 @@ class RealTimeNoisySpeechDatasetWithTimeFrequencyFeatures(IterableDataset):
             constant_values=self.min_audio_value
         )
 
-        mask = np.logical_and(audio >= 0, audio < self.min_audio_value)
-        audio[mask] = self.min_audio_value
-
-        mask = np.logical_and(audio < 0, audio > -self.min_audio_value)
-        audio[mask] = -self.min_audio_value
+        audio = self.crop_audio(audio)
 
         audio_frames_complex_stft = np.zeros((self.fft_points // 2, 3, amount_frames), dtype=complex)
         _, _, audio_complex_stft = stft(
@@ -244,14 +259,14 @@ class RealTimeNoisySpeechDatasetWithTimeFrequencyFeatures(IterableDataset):
             audio_frames_complex_stft[:, :, i] = audio_frame_complex_stft[:, start_index:end_index]
 
         audio_frames_magnitude_stft = np.abs(audio_frames_complex_stft)
-        audio_frames_magnitude_stft[audio_frames_magnitude_stft < self.min_audio_value] = self.min_audio_value
+        # audio_frames_magnitude_stft[audio_frames_magnitude_stft < self.min_audio_value] = self.min_audio_value
         audio_frames_magnitude_stft = np.log10(audio_frames_magnitude_stft).astype(np.float32)
         audio_frames_magnitude_stft = self.normalize(audio_frames_magnitude_stft)
         audio_frames_magnitude_stft = np.expand_dims(audio_frames_magnitude_stft, axis=0)
 
-        return audio_frames_magnitude_stft, audio[:audio_size]
+        return torch.from_numpy(audio_frames_magnitude_stft), torch.from_numpy(audio[:audio_size])
 
-    def build_audio(self, sample_idx, audio_type: AudioType):
+    def get_audio(self, sample_idx, audio_type: AudioType):
         if sample_idx not in self.processed_audios:
             raise AudioNotProcessed('Audio {}, not present.'.format(sample_idx))
 
@@ -298,31 +313,33 @@ class RealTimeNoisySpeechDatasetWithTimeFrequencyFeatures(IterableDataset):
         return audio
 
     def write_audio(self, sample_idx):
-        audio = self.build_audio(sample_idx, AudioType.FILTERED)
+        audio = self.get_audio(sample_idx, AudioType.FILTERED)
         audio_name = self.get_audio_data(sample_idx)['audio_name']
+        audio_directory = os.path.join(
+            self.base_path, 'filtered', 'dnn'
+        )
+        Path(audio_directory).mkdir(parents=True, exist_ok=True)
+
         audio_path = os.path.join(
-            self.base_path, '..', 'filtered', 'dnn', f'{audio_name}.wav'
+            audio_directory, f'{audio_name}.wav'
         )
         wavfile.write(audio_path, self.fs, audio)
 
     def accumulate_filtered_frames(self, filtered_frames, samples_idx):
-        return self.accumulate_outputs(filtered_frames, samples_idx, 'stft_filtered_speech')
-
-    def accumulate_outputs(self, outputs, samples_idx, key):
         accumulated_samples_idx = []
-        for i in range(outputs.shape[0]):
-            accumulated_sample_idx = self.accumulate_output(
-                outputs[i, :, :, :].detach().numpy(), samples_idx[i].item(), key
+        for i in range(filtered_frames.shape[0]):
+            accumulated_sample_idx = self.accumulate_filtered_frames(
+                filtered_frames[i, :, :, :].detach().numpy(), samples_idx[i].item()
             )
             if accumulated_sample_idx is not None:
                 accumulated_samples_idx.append(accumulated_sample_idx)
 
         return accumulated_samples_idx
 
-    def accumulate_output(self, output, sample_idx, key):
+    def accumulate_filtered_frame(self, filtered_frame, sample_idx):
         amount_samples = self.processed_audios[sample_idx]['amount_samples']
-        stft_filtered_speech = self.processed_audios[sample_idx].setdefault(key, [])
-        stft_filtered_speech.append(output)
+        stft_filtered_speech = self.processed_audios[sample_idx].setdefault('stft_filtered_speech', [])
+        stft_filtered_speech.append(filtered_frame)
         if len(stft_filtered_speech) == amount_samples:
             frames = np.asarray(stft_filtered_speech)
             frames = frames.reshape(
@@ -332,7 +349,7 @@ class RealTimeNoisySpeechDatasetWithTimeFrequencyFeatures(IterableDataset):
             ).reshape(
                 frames.shape[1:] + (frames.shape[0], )
             )
-            self.processed_audios[sample_idx][key] = frames
+            self.processed_audios[sample_idx]['stft_filtered_speech'] = frames
             return sample_idx
         elif len(stft_filtered_speech) < amount_samples:
             return None

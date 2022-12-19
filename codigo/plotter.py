@@ -322,7 +322,7 @@ def dnn_plot_example_stft_features(input_dir, model):
     fig.savefig('./store/example_stft_feature.png')
     plt.close(fig)
 
-    filtered_audio = test_dataset.build_audio(sample_idx, AudioType.FILTERED)
+    filtered_audio = test_dataset.get_audio(sample_idx, AudioType.FILTERED)
     filtered_magnitude_stft = test_dataset.get_stft(filtered_audio)
 
     fig, axs = plt.subplots(figsize=(20, 9), dpi=100, tight_layout=True)

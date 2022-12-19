@@ -55,7 +55,7 @@ class NoisySpeechDatasetTestCase(TestCase):
 
         accumulated_sample_idx = accumulated_samples_idx[0]
 
-        recovered_audio = dataset.build_audio(accumulated_sample_idx, AudioType.FILTERED)
-        original_audio = dataset.build_audio(accumulated_sample_idx, AudioType.NOISY)
+        recovered_audio = dataset.get_audio(accumulated_sample_idx, AudioType.FILTERED)
+        original_audio = dataset.get_audio(accumulated_sample_idx, AudioType.NOISY)
 
         self.assertTrue(np.all((np.abs(recovered_audio - original_audio)) <= 10**(-np.finfo(np.float32).precision)))

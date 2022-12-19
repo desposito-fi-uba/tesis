@@ -44,7 +44,7 @@ momentum = 0
 decay = 1e-6
 
 # Train config
-train_batch_size = 32
+train_batch_size = 256
 train_on_n_samples = None
 train_generate_audios = False
 train_compute_stoi_and_pesq = False
@@ -53,10 +53,10 @@ show_metrics_every_n_batches = 50
 save_model_every_n_batches = 500
 
 # Eval config
-eval_training = True
+eval_training = False
 eval_every_n_batches = 2500
 eval_on_n_samples = 100
-eval_batch_size = 32
+eval_batch_size = 256
 eval_generate_audios = True
 eval_compute_stoi_and_pesq = False
 
