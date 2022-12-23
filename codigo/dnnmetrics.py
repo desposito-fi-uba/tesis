@@ -25,7 +25,7 @@ class MetricsEvaluator(object):
         self.accumulative_max_mse_loss = []
         self.accumulative_samples_idx = []
 
-    def add_metrics(self, max_mse_loss, mse_loss, samples_idx):
+    def add_metrics(self, mse_loss, max_mse_loss, samples_idx):
 
         self.accumulative_mse_loss.append(mse_loss.item())
         self.accumulative_max_mse_loss.append(max_mse_loss.item())
@@ -41,6 +41,14 @@ class MetricsEvaluator(object):
     def push_metrics(self, batches_counter):
         mse_loss_value = mean(self.accumulative_mse_loss)
         max_mse_loss_value = mean(self.accumulative_max_mse_loss)
+
+        print(
+            '[{}] {}, '
+            'mse_loss: {:.5e}, '
+            'max_mse_loss: {:.5f}'.format(
+                batches_counter, self.mode, mse_loss_value, max_mse_loss_value
+            )
+        )
 
         if self.push_to_tensorboard:
             self.writer.add_scalars('MSELoss/{}'.format(self.mode), {

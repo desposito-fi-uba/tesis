@@ -13,6 +13,7 @@ from torch import optim, sigmoid
 from torch.utils.data import DataLoader
 from tensorboardX import SummaryWriter
 
+from utils import torch_mse
 from constants import OptimizerType
 import runsettings
 from dnnmetrics import MetricsEvaluator
@@ -69,7 +70,6 @@ def train(epochs, output_dir, input_dir, experiment_name, resume_with_model, use
 
     print('Preparing to train')
     train_csv_path = os.path.join(dataset_path, 'train.csv')
-    val_csv_path = os.path.join(dataset_path, 'val.csv')
 
     models_names = [(
             experiment_id +
@@ -88,15 +88,14 @@ def train(epochs, output_dir, input_dir, experiment_name, resume_with_model, use
     writer = SummaryWriter(log_dir=event_logs_dir, purge_step=batches_counter)
 
     validator = ModelEvaluator(
-        writer, dataset_path, val_csv_path, epochs, 'val', runsettings.eval_on_n_samples,
-        runsettings.eval_batch_size, runsettings.eval_generate_audios, None,
-        None, output_dir, True
+        writer, dataset_path, train_csv_path, 1, 'val', runsettings.eval_on_n_samples,
+        runsettings.eval_batch_size, runsettings.eval_generate_audios, output_dir, False
     )
 
     trainer = ModelEvaluator(
         writer, dataset_path, train_csv_path, epochs, 'train', runsettings.train_on_n_samples,
-        runsettings.train_batch_size, runsettings.train_generate_audios, validator,
-        models_names_iterator, output_dir, True
+        runsettings.train_batch_size, runsettings.train_generate_audios,
+        output_dir, True, validation_model_evaluator=validator, models_names_iterator=models_names_iterator
     )
     trainer.evaluate(batches_counter)
 
@@ -104,18 +103,24 @@ def train(epochs, output_dir, input_dir, experiment_name, resume_with_model, use
 class ModelEvaluator(object):
     def __init__(
             self, tensorboard_writer, dataset_path, csv_path, num_epochs, mode, dataset_max_samples,
-            batch_size, generate_audios, validation_model_evaluator, models_names_iterator, output_dir, is_train
+            batch_size, generate_audios, output_dir, is_train,
+            validation_model_evaluator=None, models_names_iterator=None
     ):
         self.mode = mode
         self.csv_path = csv_path
 
         self.num_epochs = num_epochs
 
+        discard_dataset_samples_idx = (
+            validation_model_evaluator.dataset.samples_order if validation_model_evaluator else None
+        )
+
         self.dataset = RealTimeNoisySpeechDatasetWithTimeFrequencyFeatures(
-            dataset_path, dataset_path, runsettings.fs, runsettings.windows_time_size,
+            dataset_path, csv_path, runsettings.fs, runsettings.windows_time_size,
             runsettings.overlap_percentage, runsettings.fft_points, runsettings.time_feature_size,
             runsettings.device, randomize=runsettings.randomize_data, max_samples=dataset_max_samples,
-            normalize=runsettings.normalize_data, predict_on_time_windows=runsettings.predict_on_time_windows
+            normalize=runsettings.normalize_data, predict_on_time_windows=runsettings.predict_on_time_windows,
+            discard_dataset_samples_idx=discard_dataset_samples_idx
         )
 
         self.data_loader = DataLoader(self.dataset, batch_size=batch_size)
@@ -134,7 +139,7 @@ class ModelEvaluator(object):
 
         self.metric_evaluator = MetricsEvaluator(
             tensorboard_writer, self.dataset, self.mode, runsettings.filter_type, runsettings.features_type,
-            runsettings.fs, generate_audios=generate_audios
+            runsettings.fs, generate_audios=generate_audios, push_to_tensorboard=True
         )
 
         self.validation_model_evaluator = validation_model_evaluator
@@ -154,34 +159,35 @@ class ModelEvaluator(object):
     def _evaluate(self, batches_counter):
         for i_epoch in range(self.num_epochs):
             for i_batch, sample_batched in enumerate(self.data_loader):
-                runsettings.net.train()
-                batches_counter += 1
+                if self.is_train:
+                    batches_counter += 1
 
                 noisy_speeches = sample_batched['noisy_speech']
                 noisy_output_speeches = sample_batched['noisy_output_speech']
                 clean_speeches = sample_batched['clean_speech']
-                noises = sample_batched['noise']
                 samples_idx = sample_batched['sample_idx']
 
-                self.optimizer.zero_grad()
+                if self.is_train:
+                    self.optimizer.zero_grad()
 
-                outputs = runsettings.net(noisy_speeches)
+                outputs, _ = runsettings.net(noisy_speeches)
                 if runsettings.normalize_data:
                     outputs = sigmoid(outputs)
 
                 mse_loss = runsettings.criterion(outputs, clean_speeches)
-                max_mse_loss = runsettings.criterion(noisy_output_speeches, clean_speeches)
 
                 if self.is_train:
                     mse_loss.backward()
 
                     self.optimizer.step()
 
-                outputs.cpu()
-                clean_speeches.cpu()
-                noisy_speeches.cpu()
+                outputs = outputs.cpu()
+                clean_speeches = clean_speeches.cpu()
+                noisy_speeches = noisy_speeches.cpu()
 
-                accumulated_samples_idx = self.dataset.accumulate_filtered_frames(outputs, samples_idx)
+                max_mse_loss = torch_mse(noisy_output_speeches, clean_speeches)
+
+                accumulated_samples_idx = self.dataset.accumulate_filtered_frames(outputs.detach(), samples_idx)
                 self.metric_evaluator.add_metrics(
                     mse_loss, max_mse_loss, accumulated_samples_idx
                 )
@@ -205,6 +211,9 @@ class ModelEvaluator(object):
                     torch.save(runsettings.net.state_dict(), file_path)
 
                     print('Model store with name {} in {}'.format(output_model_name, self.output_dir))
+
+        if not self.is_train:
+            self.metric_evaluator.push_metrics(batches_counter)
 
 
 if __name__ == "__main__":

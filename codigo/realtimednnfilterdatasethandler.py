@@ -19,8 +19,11 @@ class RealTimeNoisySpeechDatasetWithTimeFrequencyFeatures(IterableDataset):
     def __getitem__(self, index) -> T_co:
         raise NotImplementedError('__getitem__ not implemented')
 
-    def __init__(self, base_path, csv_file, fs, windows_time_size, overlap_percentage, fft_points, time_feature_size,
-                 device, max_samples=None, randomize=False, normalize=False, predict_on_time_windows=None):
+    def __init__(
+            self, base_path, csv_file, fs, windows_time_size, overlap_percentage, fft_points, time_feature_size,
+            device, max_samples=None, randomize=False, normalize=False, predict_on_time_windows=None,
+            discard_dataset_samples_idx=None
+    ):
         self.base_path = base_path
         self.samples = pd.read_csv(csv_file)
         self.data_samples = None
@@ -43,12 +46,18 @@ class RealTimeNoisySpeechDatasetWithTimeFrequencyFeatures(IterableDataset):
             self.samples_order = np.random.permutation(total_samples)[:self.amt_samples]
         else:
             self.samples_order = np.arange(self.amt_samples)
+
+        if discard_dataset_samples_idx is not None:
+            self.samples_order = np.delete(
+                self.samples_order, np.in1d(self.samples_order, discard_dataset_samples_idx)
+            )
+
         self.current_base_path = None
         self.current_file_name = None
 
         self.processed_audios = OrderedDict()
 
-        self.max_queue_size = 1
+        self.max_queue_size = 5
 
         self.min_audio_value = 10**-20
         self.min_value = -25
@@ -150,10 +159,10 @@ class RealTimeNoisySpeechDatasetWithTimeFrequencyFeatures(IterableDataset):
 
         stft_noisy_speech, stft_phase_noisy_speech, _ = self.prepare_input(noisy_speech)
         stft_noisy_output_speech, noisy_speech = self.prepare_output(noisy_speech)
-        stft_noisy_speech.to(self.device)
+        stft_noisy_speech = stft_noisy_speech.to(self.device)
 
         stft_clean_speech, clean_speech = self.prepare_output(clean_speech)
-        stft_clean_speech.to(self.device)
+        stft_clean_speech = stft_clean_speech.to(self.device)
 
         stft_noise, noise = self.prepare_output(noise)
 
@@ -272,11 +281,11 @@ class RealTimeNoisySpeechDatasetWithTimeFrequencyFeatures(IterableDataset):
 
         audio_data = self.processed_audios[sample_idx]
         if audio_type == AudioType.NOISY:
-            return audio_data['noisy_audio']
+            return audio_data['noisy_audio'].numpy()
         elif audio_type == AudioType.NOISE:
-            return audio_data['noise_audio']
+            return audio_data['noise_audio'].numpy()
         elif audio_type == AudioType.CLEAN:
-            return audio_data['clean_audio']
+            return audio_data['clean_audio'].numpy()
         elif audio_type == AudioType.FILTERED:
             stft_frames_magnitude, stft_frames_phase = (
                 audio_data['stft_filtered_speech'], audio_data['stft_phase_noisy_speech']
@@ -293,7 +302,7 @@ class RealTimeNoisySpeechDatasetWithTimeFrequencyFeatures(IterableDataset):
         stft_frames_magnitude = 10 ** stft_frames_magnitude
 
         audio = np.zeros((padded_audio_size,))
-        audio[:audio_size] = audio_data['noisy_audio'].copy()
+        audio[:audio_size] = audio_data['noisy_audio'].numpy().copy()
         offset = frame_size - self.windows_points_size * (self.time_feature_size - self.predict_on_time_windows + 1)
         for i in range(0, amount_frames):
             end_index = self.time_feature_size - (2 * (self.time_feature_size - self.predict_on_time_windows))
@@ -316,7 +325,7 @@ class RealTimeNoisySpeechDatasetWithTimeFrequencyFeatures(IterableDataset):
         audio = self.get_audio(sample_idx, AudioType.FILTERED)
         audio_name = self.get_audio_data(sample_idx)['audio_name']
         audio_directory = os.path.join(
-            self.base_path, 'filtered', 'dnn'
+            self.base_path, '..', 'filtered', 'dnn'
         )
         Path(audio_directory).mkdir(parents=True, exist_ok=True)
 
@@ -328,8 +337,8 @@ class RealTimeNoisySpeechDatasetWithTimeFrequencyFeatures(IterableDataset):
     def accumulate_filtered_frames(self, filtered_frames, samples_idx):
         accumulated_samples_idx = []
         for i in range(filtered_frames.shape[0]):
-            accumulated_sample_idx = self.accumulate_filtered_frames(
-                filtered_frames[i, :, :, :].detach().numpy(), samples_idx[i].item()
+            accumulated_sample_idx = self.accumulate_filtered_frame(
+                filtered_frames[i, :, :, :].numpy(), samples_idx[i].item()
             )
             if accumulated_sample_idx is not None:
                 accumulated_samples_idx.append(accumulated_sample_idx)
@@ -412,20 +421,3 @@ class RealTimeNoisySpeechDatasetWithTimeFrequencyFeatures(IterableDataset):
 
     def get_audio_data(self, sample_idx):
         return self.processed_audios[sample_idx]
-
-    def overwrite_samples(self, noisy_speeches, clean_speeches, noises, snrs, noises_type):
-        self.data_samples = pd.DataFrame(
-            data={
-                'noisy_speech': noisy_speeches,
-                'clean_speech': clean_speeches,
-                'noise': noises,
-                'snr': snrs,
-                'noise_type': noises_type
-            }
-        )
-        self.amt_samples = len(self.data_samples)
-
-        if self.randomize:
-            self.samples_order = np.random.permutation(self.amt_samples)
-        else:
-            self.samples_order = np.arange(self.amt_samples)

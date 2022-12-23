@@ -10,8 +10,13 @@
 
 ## Entrenar red
 
-1. Run 
+1. Execute train script 
 
 ```
-python dnntrain.py --epochs=10 --input-dir=./dataset/audios_train --output-dir=./trained-models --experiment-name=dnn-train`
+python -m dnntrain --epochs=10 --input-dir=./dataset/audios_train --output-dir=./trained-models --experiment-name=dnn-train
+```
+2. Execute tensorboard
+
+```
+tensorboard --logdir=./trained-models/logs
 ```
