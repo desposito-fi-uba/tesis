@@ -1,3 +1,7 @@
 trainingInput:
   masterConfig:
-    containerCommand: ["/bin/bash", "-c", "python -u -m dnntrain --epochs=10 --input-dir=gs://noisefilter/dataset.tar.gz --output-dir=gs://noisefilter --experiment-name=dnn-train-real-time-decay1e-6-lr1e-5-w60-batch512 --overload-settings=gs://noisefilter/overload_settings.json --resume-with-model=dnn-train-real-time-decay1e-6-lr1e-3-w60-batch512-wDOO66nZ776rc7tP.pth"]
+    containerCommand: [
+        "/bin/bash",
+        "-c",
+        "python -u -m dnntrain --epochs=10 --input-dir=gs://desposito-noisefilter/dataset.tar.gz --output-dir=gs://desposito-noisefilter --experiment-name=dnn-train-time-decay1e-6-lr1e-4-w60-batch256 --overload-settings=gs://desposito-noisefilter/overload_settings.json"
+    ]

@@ -51,6 +51,7 @@ class RealTimeNoisySpeechDatasetWithTimeFrequencyFeatures(IterableDataset):
             self.samples_order = np.delete(
                 self.samples_order, np.in1d(self.samples_order, discard_dataset_samples_idx)
             )
+            self.amt_samples = self.amt_samples - len(discard_dataset_samples_idx)
 
         self.current_base_path = None
         self.current_file_name = None

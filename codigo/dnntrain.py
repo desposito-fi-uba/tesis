@@ -1,6 +1,8 @@
 import itertools
+import json
 import os
 import random
+import shutil
 import string
 from datetime import datetime
 from os import listdir
@@ -9,6 +11,7 @@ from os.path import isfile, join, splitext
 import click
 import torch
 
+from google.cloud import storage
 from torch import optim, sigmoid
 from torch.utils.data import DataLoader
 from tensorboardX import SummaryWriter
@@ -28,18 +31,36 @@ from realtimednnfilterdatasethandler import RealTimeNoisySpeechDatasetWithTimeFr
 @click.option('--resume-with-model', required=False, help='Name of the model to be used to resume training', type=str)
 @click.option('--use-gpu', required=False, help='GPU must be used if available', type=bool)
 @click.option('--resume-from-model', required=False, help='Resume from model if available', type=bool)
-def train(epochs, output_dir, input_dir, experiment_name, resume_with_model, use_gpu, resume_from_model):
+@click.option('--overload-settings', required=False, help='Settings to be used', type=str)
+def train(
+        epochs, output_dir, input_dir, experiment_name, resume_with_model, use_gpu, resume_from_model, overload_settings
+):
     if use_gpu is not None and not use_gpu:
         runsettings.device = torch.device("cpu")
 
     if resume_from_model is None:
         resume_from_model = True
 
-    print('Running on {}'.format(runsettings.device))
-
     if not experiment_name:
         experiment_name = datetime.now().strftime('%Y%m%d_%H%M%S')
 
+    if overload_settings:
+        storage_client = storage.Client()
+        print('Downloading settings from {}'.format(overload_settings))
+        bucket_name_and_file_path = overload_settings.split('gs://')[1]
+        bucket_name = bucket_name_and_file_path.split('/', 1)[0]
+        file_path = bucket_name_and_file_path.split('/', 1)[1]
+        bucket = storage_client.bucket(bucket_name)
+        blob = bucket.blob(file_path)
+
+        overloaded_settings_path = os.path.join(os.getcwd(), 'tmp', 'overloadedsettings.json')
+        blob.download_to_filename(overloaded_settings_path)
+        with open(overloaded_settings_path, 'r') as f:
+            overloaded_settings = json.load(f)
+            for config_key, config_value in overloaded_settings.items():
+                setattr(runsettings, config_key, config_value)
+
+    print('Running on {}'.format(torch.device(runsettings.device)))
     print('Running in mode {}'.format(runsettings.filter_type))
     print('Running with features {}'.format(runsettings.features_type))
     print('Running with optimizer {}'.format(runsettings.optimizer_type))
@@ -48,25 +69,72 @@ def train(epochs, output_dir, input_dir, experiment_name, resume_with_model, use
     logs_path = 'logs'
 
     event_logs_dir = join(output_dir, logs_path, experiment_id)
+
+    storage_client = storage.Client()
     dataset_path = input_dir
+    if 'gs' in input_dir:
+        print('Downloading dataset from {}'.format(input_dir))
+        bucket_name_and_file_path = input_dir.split('gs://')[1]
+        bucket_name = bucket_name_and_file_path.split('/', 1)[0]
+        file_path = bucket_name_and_file_path.split('/', 1)[1]
+        bucket = storage_client.bucket(bucket_name)
+        blob = bucket.blob(file_path)
+
+        temp_tar_dataset_path = os.path.join(os.getcwd(), 'tmp', 'dataset.tar.gz')
+        blob.download_to_filename(temp_tar_dataset_path)
+        tar_dataset_path = temp_tar_dataset_path
+    else:
+        tar_dataset_path = None
+        if 'tar' in input_dir:
+            tar_dataset_path = input_dir
+
+    if tar_dataset_path:
+        print('Extracting dataset to {}'.format('./'))
+        shutil.unpack_archive(tar_dataset_path, './')
+        print(f'New directory tree is {[x[0] for x in os.walk("./")]}')
+        dataset_path = os.path.join('./', 'dataset', 'audios_train')
 
     print('Looking for a model to resume from in {}'.format(output_dir))
-    if resume_from_model:
-        if not resume_with_model:
-            available_models_path = [
-                join(output_dir, f)
-                for f in listdir(output_dir)
-                if isfile(join(output_dir, f)) and splitext(f)[1] == '.pth' and experiment_id in splitext(f)[0]
-            ]
-            latest_created_model = None
-            if available_models_path:
-                latest_created_model = max(available_models_path, key=os.path.getctime)
+    if 'gs' in output_dir:
+        bucket_name = output_dir.split('gs://')[1]
+        bucket = storage_client.bucket(bucket_name)
+        chosen_blob = None
+        if resume_with_model:
+            print('Resuming from model {}'.format(resume_with_model))
+            chosen_blob = bucket.blob(resume_with_model)
         else:
-            latest_created_model = join(output_dir, resume_with_model + '.pth')
+            blobs = bucket.list_blobs()
+            blobs = filter(lambda blob: ('.pth' in blob.name and experiment_id in blob.name), blobs)
+            sorted_blobs = list(sorted(blobs, key=lambda x: x.updated, reverse=True))
+            if sorted_blobs:
+                chosen_blob = sorted_blobs[0]
 
-        if latest_created_model:
-            print('Model {} loaded'.format(latest_created_model))
-            runsettings.net.load_state_dict(torch.load(latest_created_model))
+        if chosen_blob:
+            file_name = chosen_blob.name.split('/')[-1]
+            # File name could be an empty string which indicates that there is not any model to load
+            if file_name:
+                temp_file_path = os.path.join(os.getcwd(), 'tmp', file_name)
+                chosen_blob.download_to_filename(temp_file_path)
+
+                print('Model {} loaded'.format(file_name))
+                runsettings.net.load_state_dict(torch.load(temp_file_path, map_location=runsettings.device))
+    else:
+        if resume_from_model:
+            if not resume_with_model:
+                available_models_path = [
+                    join(output_dir, f)
+                    for f in listdir(output_dir)
+                    if isfile(join(output_dir, f)) and splitext(f)[1] == '.pth' and experiment_id in splitext(f)[0]
+                ]
+                latest_created_model = None
+                if available_models_path:
+                    latest_created_model = max(available_models_path, key=os.path.getctime)
+            else:
+                latest_created_model = join(output_dir, resume_with_model + '.pth')
+
+            if latest_created_model:
+                print('Model {} loaded'.format(latest_created_model))
+                runsettings.net.load_state_dict(torch.load(latest_created_model))
 
     print('Preparing to train')
     train_csv_path = os.path.join(dataset_path, 'train.csv')
@@ -84,18 +152,18 @@ def train(epochs, output_dir, input_dir, experiment_name, resume_with_model, use
     print('Starting training with {} epochs'.format(epochs))
     batches_counter = runsettings.net.current_batch_number.item()
 
-    print('Output tensorboard events to {}'.format(event_logs_dir))
+    print('Output tensorboard events to {}. Resuming from step {}'.format(event_logs_dir, batches_counter))
     writer = SummaryWriter(log_dir=event_logs_dir, purge_step=batches_counter)
 
     validator = ModelEvaluator(
         writer, dataset_path, train_csv_path, 1, 'val', runsettings.eval_on_n_samples,
-        runsettings.eval_batch_size, runsettings.eval_generate_audios, output_dir, False
+        runsettings.eval_batch_size, runsettings.eval_generate_audios, output_dir, False, storage_client
     )
 
     trainer = ModelEvaluator(
         writer, dataset_path, train_csv_path, epochs, 'train', runsettings.train_on_n_samples,
-        runsettings.train_batch_size, runsettings.train_generate_audios,
-        output_dir, True, validation_model_evaluator=validator, models_names_iterator=models_names_iterator
+        runsettings.train_batch_size, runsettings.train_generate_audios, output_dir, True, storage_client,
+        validation_model_evaluator=validator, models_names_iterator=models_names_iterator
     )
     trainer.evaluate(batches_counter)
 
@@ -103,11 +171,12 @@ def train(epochs, output_dir, input_dir, experiment_name, resume_with_model, use
 class ModelEvaluator(object):
     def __init__(
             self, tensorboard_writer, dataset_path, csv_path, num_epochs, mode, dataset_max_samples,
-            batch_size, generate_audios, output_dir, is_train,
+            batch_size, generate_audios, output_dir, is_train, storage_client,
             validation_model_evaluator=None, models_names_iterator=None
     ):
         self.mode = mode
         self.csv_path = csv_path
+        self.storage_client = storage_client
 
         self.num_epochs = num_epochs
 
@@ -207,8 +276,16 @@ class ModelEvaluator(object):
                     runsettings.net.current_batch_number = torch.tensor(batches_counter)
                     output_model_name = next(self.models_names_iterator)
 
-                    file_path = os.path.join(self.output_dir, output_model_name)
-                    torch.save(runsettings.net.state_dict(), file_path)
+                    if 'gs' in self.output_dir:
+                        temp_file_path = os.path.join(os.getcwd(), 'tmp', output_model_name)
+                        torch.save(runsettings.net.state_dict(), temp_file_path)
+                        bucket_name = self.output_dir.split('gs://')[1]
+                        bucket = self.storage_client.bucket(bucket_name)
+                        blob = bucket.blob(output_model_name)
+                        blob.upload_from_filename(temp_file_path)
+                    else:
+                        file_path = os.path.join(self.output_dir, output_model_name)
+                        torch.save(runsettings.net.state_dict(), file_path)
 
                     print('Model store with name {} in {}'.format(output_model_name, self.output_dir))
 
