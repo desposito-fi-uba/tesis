@@ -15,6 +15,7 @@
 ```
 python -m dnntrain --epochs=10 --input-dir=./dataset/audios_train --output-dir=./trained-models --experiment-name=dnn-train
 ```
+
 2. Ejecutar tensorboard
 
 ```
@@ -23,7 +24,17 @@ tensorboard --logdir=./trained-models/logs
 
 ## Entrenar red localmente usando resources de gcp
 
-* Ejecutar `python -u -m dnntrain --epochs=10 --input-dir=gs://desposito-noisefilter/dataset.tar.gz --output-dir=gs://desposito-noisefilter --experiment-name=dnn-train --overload-settings=gs://desposito-noisefilter/overload_settings.json`
+1. Ejecutar entrenamiento 
+
+```
+python -u -m dnntrain --epochs=10 --input-dir=gs://desposito-noisefilter/dataset.tar.gz --output-dir=gs://desposito-noisefilter --experiment-name=dnn-train --overload-settings=gs://desposito-noisefilter/overload_settings.json
+```
+
+2. Ejecutar tensorboard
+
+```
+tensorboard --logdir=gs://desposito-noisefilter/logs
+```
 
 ## Entrenar red en gcp
 
@@ -102,3 +113,17 @@ gcloud ai-platform jobs submit training $JOB_NAME \
 ### Visualizar entrenamiento
 
 * Ejecutar `tensorboard --logdir=gs://desposito-noisefilter/logs`
+
+## Probar el modelo de dnn
+
+1. Ejecutar script de pruebas 
+
+```
+python -m dnnpredict --input-dir=./dataset/audios_test --output-dir=./trained-models --experiment-name=dnn-test
+```
+
+2. Ejecutar tensorboard
+
+```
+tensorboard --logdir=./trained-models/logs
+```

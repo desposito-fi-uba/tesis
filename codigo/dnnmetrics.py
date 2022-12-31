@@ -1,5 +1,10 @@
 from statistics import mean
 
+import numpy as np
+
+from constants import AudioType
+from utils import np_mse
+
 
 class MetricsEvaluator(object):
     def __init__(
@@ -7,7 +12,8 @@ class MetricsEvaluator(object):
             push_to_tensorboard=True
     ):
         self.accumulative_mse_loss = []
-        self.accumulative_max_mse_loss = []
+        self.accumulative_audio_max_mse = []
+        self.accumulative_audio_mse = []
         self.accumulative_samples_idx = []
         self.writer = tensorboard_writer
         self.dataset = dataset
@@ -22,39 +28,55 @@ class MetricsEvaluator(object):
 
     def restart_metrics(self):
         self.accumulative_mse_loss = []
-        self.accumulative_max_mse_loss = []
+        self.accumulative_audio_max_mse = []
+        self.accumulative_audio_mse = []
         self.accumulative_samples_idx = []
 
-    def add_metrics(self, mse_loss, max_mse_loss, samples_idx):
+    def add_metrics(self, mse_loss, samples_idx):
 
         self.accumulative_mse_loss.append(mse_loss.item())
-        self.accumulative_max_mse_loss.append(max_mse_loss.item())
-
-        if not self.generate_audios:
-            return
 
         for sample_idx in samples_idx:
-            self.dataset.write_audio(sample_idx)
+            if self.generate_audios:
+                self.dataset.write_audio(sample_idx)
+
+            filtered = self.dataset.get_audio(sample_idx, AudioType.FILTERED)
+            noisy = self.dataset.get_audio(sample_idx, AudioType.NOISY)
+            clean = self.dataset.get_audio(sample_idx, AudioType.CLEAN)
+
+            audio_max_mse = np_mse(noisy, clean)
+            audio_mse = np_mse(filtered, clean)
+
+            self.accumulative_audio_max_mse.append(audio_max_mse)
+            self.accumulative_audio_mse.append(audio_mse)
 
         self.accumulative_samples_idx.extend(samples_idx)
 
     def push_metrics(self, batches_counter):
-        mse_loss_value = mean(self.accumulative_mse_loss)
-        max_mse_loss_value = mean(self.accumulative_max_mse_loss)
+        mse = np.asarray(self.accumulative_mse_loss).mean()
+        if self.accumulative_audio_mse and self.accumulative_audio_max_mse:
+            audio_mse = np.asarray(self.accumulative_audio_mse).mean()
+            audio_max_mse = np.asarray(self.accumulative_audio_max_mse).mean()
+        else:
+            audio_mse = np.nan
+            audio_max_mse = np.nan
 
         print(
             '[{}] {}, '
-            'mse_loss: {:.5e}, '
-            'max_mse_loss: {:.5f}'.format(
-                batches_counter, self.mode, mse_loss_value, max_mse_loss_value
+            'mse: {:.5e}, '
+            'audio_max_mse: {:.5f} '
+            'audio_mse: {:.5f}'.format(
+                batches_counter, self.mode, mse, audio_max_mse, audio_mse
             )
         )
 
         if self.push_to_tensorboard:
-            self.writer.add_scalars('MSELoss/{}'.format(self.mode), {
-                'max': max_mse_loss_value,
-                'actual': mse_loss_value
-            }, batches_counter)
+            self.writer.add_scalar('MSE/{}'.format(self.mode), mse, batches_counter)
+            if audio_max_mse is not np.nan and audio_mse is not np.nan:
+                self.writer.add_scalars('Audio MSE/{}'.format(self.mode), {
+                    'max': audio_max_mse,
+                    'actual': audio_mse
+                }, batches_counter)
             self.writer.flush()
 
         self.restart_metrics()

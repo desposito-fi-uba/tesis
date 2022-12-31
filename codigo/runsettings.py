@@ -31,10 +31,10 @@ overlap_percentage = 0.5
 fft_points = 2 ** 9
 
 # Optimizer config
-lr = 1e-4
+lr = 0.001
 betas = (0.9, 0.999)
 momentum = 0
-decay = 1e-6
+decay = 0.0001
 
 # Train config
 train_batch_size = 256

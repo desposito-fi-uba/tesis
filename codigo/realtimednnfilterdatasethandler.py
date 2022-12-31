@@ -58,7 +58,7 @@ class RealTimeNoisySpeechDatasetWithTimeFrequencyFeatures(IterableDataset):
 
         self.processed_audios = OrderedDict()
 
-        self.max_queue_size = 5
+        self.max_queue_size = 50
 
         self.min_audio_value = 10**-20
         self.min_value = -25
@@ -347,6 +347,11 @@ class RealTimeNoisySpeechDatasetWithTimeFrequencyFeatures(IterableDataset):
         return accumulated_samples_idx
 
     def accumulate_filtered_frame(self, filtered_frame, sample_idx):
+        if sample_idx not in self.processed_audios:
+            raise RuntimeError(
+                f'Sample {sample_idx} was deleted from memory. '
+                f'Samples indexes in memory are {list(self.processed_audios.keys())}'
+            )
         amount_samples = self.processed_audios[sample_idx]['amount_samples']
         stft_filtered_speech = self.processed_audios[sample_idx].setdefault('stft_filtered_speech', [])
         stft_filtered_speech.append(filtered_frame)

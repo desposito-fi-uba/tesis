@@ -12,15 +12,10 @@ import click
 import torch
 
 from google.cloud import storage
-from torch import optim, sigmoid
-from torch.utils.data import DataLoader
 from tensorboardX import SummaryWriter
 
-from utils import torch_mse
-from constants import OptimizerType
+from dnnmodelevaluator import ModelEvaluator
 import runsettings
-from dnnmetrics import MetricsEvaluator
-from realtimednnfilterdatasethandler import RealTimeNoisySpeechDatasetWithTimeFrequencyFeatures
 
 
 @click.command()
@@ -89,10 +84,22 @@ def train(
             tar_dataset_path = input_dir
 
     if tar_dataset_path:
-        print('Extracting dataset to {}'.format('./'))
-        shutil.unpack_archive(tar_dataset_path, './')
-        print(f'New directory tree is {[x[0] for x in os.walk("./")]}')
-        dataset_path = os.path.join('./', 'dataset', 'audios_train')
+        dataset_extracted_path = os.path.join(os.getcwd(), 'tmp', 'extracted_dataset')
+        print('Extracting dataset to {}'.format(dataset_extracted_path))
+
+        shutil.unpack_archive(tar_dataset_path, dataset_extracted_path)
+        print(f'New directory tree is {[x[0] for x in os.walk(dataset_extracted_path)]}')
+
+        dataset_path = None
+        for (root, dirs, files) in os.walk(dataset_extracted_path):
+            if files:
+                dataset_path = root
+                break
+
+        if not dataset_path:
+            raise RuntimeError('Dataset path not found')
+
+        print(f'Selected dataset path is {dataset_path}')
 
     print('Looking for a model to resume from in {}'.format(output_dir))
     if 'gs' in output_dir:
@@ -157,140 +164,17 @@ def train(
 
     validator = ModelEvaluator(
         writer, dataset_path, train_csv_path, 1, 'val', runsettings.eval_on_n_samples,
-        runsettings.eval_batch_size, runsettings.eval_generate_audios, output_dir, False, storage_client
+        runsettings.eval_batch_size, runsettings.eval_generate_audios, output_dir, False, storage_client,
+        push_metrics_every_x_batches=False
     )
 
     trainer = ModelEvaluator(
         writer, dataset_path, train_csv_path, epochs, 'train', runsettings.train_on_n_samples,
         runsettings.train_batch_size, runsettings.train_generate_audios, output_dir, True, storage_client,
-        validation_model_evaluator=validator, models_names_iterator=models_names_iterator
+        validation_model_evaluator=validator, models_names_iterator=models_names_iterator,
+        push_metrics_every_x_batches=True
     )
     trainer.evaluate(batches_counter)
-
-
-class ModelEvaluator(object):
-    def __init__(
-            self, tensorboard_writer, dataset_path, csv_path, num_epochs, mode, dataset_max_samples,
-            batch_size, generate_audios, output_dir, is_train, storage_client,
-            validation_model_evaluator=None, models_names_iterator=None
-    ):
-        self.mode = mode
-        self.csv_path = csv_path
-        self.storage_client = storage_client
-
-        self.num_epochs = num_epochs
-
-        discard_dataset_samples_idx = (
-            validation_model_evaluator.dataset.samples_order if validation_model_evaluator else None
-        )
-
-        self.dataset = RealTimeNoisySpeechDatasetWithTimeFrequencyFeatures(
-            dataset_path, csv_path, runsettings.fs, runsettings.windows_time_size,
-            runsettings.overlap_percentage, runsettings.fft_points, runsettings.time_feature_size,
-            runsettings.device, randomize=runsettings.randomize_data, max_samples=dataset_max_samples,
-            normalize=runsettings.normalize_data, predict_on_time_windows=runsettings.predict_on_time_windows,
-            discard_dataset_samples_idx=discard_dataset_samples_idx
-        )
-
-        self.data_loader = DataLoader(self.dataset, batch_size=batch_size)
-
-        if runsettings.optimizer_type == OptimizerType.SGD_WITH_MOMENTUM:
-            self.optimizer = optim.SGD(
-                runsettings.net.parameters(), lr=runsettings.lr, momentum=runsettings.momentum,
-                weight_decay=runsettings.decay
-            )
-        elif runsettings.optimizer_type == OptimizerType.ADAM:
-            self.optimizer = optim.Adam(
-                runsettings.net.parameters(), lr=runsettings.lr, betas=runsettings.betas, weight_decay=runsettings.decay
-            )
-        else:
-            raise RuntimeError('Unknown optimizer type {}'.format(runsettings.optimizer_type))
-
-        self.metric_evaluator = MetricsEvaluator(
-            tensorboard_writer, self.dataset, self.mode, runsettings.filter_type, runsettings.features_type,
-            runsettings.fs, generate_audios=generate_audios, push_to_tensorboard=True
-        )
-
-        self.validation_model_evaluator = validation_model_evaluator
-        self.models_names_iterator = models_names_iterator
-        self.output_dir = output_dir
-        self.is_train = is_train
-
-    def evaluate(self, batches_counter):
-        if self.is_train:
-            runsettings.net.train()
-            self._evaluate(batches_counter)
-        else:
-            with torch.no_grad():
-                runsettings.net.eval()
-                self._evaluate(batches_counter)
-
-    def _evaluate(self, batches_counter):
-        for i_epoch in range(self.num_epochs):
-            for i_batch, sample_batched in enumerate(self.data_loader):
-                if self.is_train:
-                    batches_counter += 1
-
-                noisy_speeches = sample_batched['noisy_speech']
-                noisy_output_speeches = sample_batched['noisy_output_speech']
-                clean_speeches = sample_batched['clean_speech']
-                samples_idx = sample_batched['sample_idx']
-
-                if self.is_train:
-                    self.optimizer.zero_grad()
-
-                outputs, _ = runsettings.net(noisy_speeches)
-                if runsettings.normalize_data:
-                    outputs = sigmoid(outputs)
-
-                mse_loss = runsettings.criterion(outputs, clean_speeches)
-
-                if self.is_train:
-                    mse_loss.backward()
-
-                    self.optimizer.step()
-
-                outputs = outputs.cpu()
-                clean_speeches = clean_speeches.cpu()
-                noisy_speeches = noisy_speeches.cpu()
-
-                max_mse_loss = torch_mse(noisy_output_speeches, clean_speeches)
-
-                accumulated_samples_idx = self.dataset.accumulate_filtered_frames(outputs.detach(), samples_idx)
-                self.metric_evaluator.add_metrics(
-                    mse_loss, max_mse_loss, accumulated_samples_idx
-                )
-
-                if self.is_train and batches_counter % runsettings.show_metrics_every_n_batches == 0:
-                    self.metric_evaluator.push_metrics(batches_counter)
-
-                if (
-                        self.is_train and
-                        runsettings.eval_training and
-                        batches_counter % runsettings.eval_every_n_batches == 0
-                ):
-                    self.validation_model_evaluator.evaluate(batches_counter)
-                    runsettings.net.train()
-
-                if self.is_train and batches_counter % runsettings.save_model_every_n_batches == 0:
-                    runsettings.net.current_batch_number = torch.tensor(batches_counter)
-                    output_model_name = next(self.models_names_iterator)
-
-                    if 'gs' in self.output_dir:
-                        temp_file_path = os.path.join(os.getcwd(), 'tmp', output_model_name)
-                        torch.save(runsettings.net.state_dict(), temp_file_path)
-                        bucket_name = self.output_dir.split('gs://')[1]
-                        bucket = self.storage_client.bucket(bucket_name)
-                        blob = bucket.blob(output_model_name)
-                        blob.upload_from_filename(temp_file_path)
-                    else:
-                        file_path = os.path.join(self.output_dir, output_model_name)
-                        torch.save(runsettings.net.state_dict(), file_path)
-
-                    print('Model store with name {} in {}'.format(output_model_name, self.output_dir))
-
-        if not self.is_train:
-            self.metric_evaluator.push_metrics(batches_counter)
 
 
 if __name__ == "__main__":
