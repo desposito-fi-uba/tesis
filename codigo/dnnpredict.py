@@ -5,23 +5,10 @@ import click
 import torch
 import numpy as np
 
-from torch import nn, sigmoid
-from torch.utils.data import DataLoader
 from tensorboardX import SummaryWriter
 
-from constants import FilterType
+from dnnmodelevaluator import ModelEvaluator
 import runsettings
-from dnnmetrics import MetricsEvaluator
-from realtimednnfilterdatasethandler import RealTimeNoisySpeechDatasetWithTimeFrequencyFeatures
-
-criterion = nn.MSELoss()
-
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-print('Running on {}'.format(device))
-
-print('Running in mode {}'.format(runsettings.filter_type))
-print('Running with features {}'.format(runsettings.features_type))
-print('Running with optimizer {}'.format(runsettings.optimizer_type))
 
 
 @click.command()
@@ -30,6 +17,11 @@ print('Running with optimizer {}'.format(runsettings.optimizer_type))
 @click.option('--input-dir', prompt='Dataset to be used while training', type=str)
 @click.option('--experiment-name', prompt='Experiment name', type=str)
 def predict(output_dir, input_dir, experiment_name, model=None):
+    print('Running on {}'.format(torch.device(runsettings.device)))
+    print('Running in mode {}'.format(runsettings.filter_type))
+    print('Running with features {}'.format(runsettings.features_type))
+    print('Running with optimizer {}'.format(runsettings.optimizer_type))
+
     if model is None:
         models_path = os.path.join(os.getcwd(), 'trained-models')
 
@@ -58,54 +50,12 @@ def predict(output_dir, input_dir, experiment_name, model=None):
     print('Preparing to predict')
     test_dataset_path = os.path.join(dataset_path, 'test.csv')
 
-    test_dataset = RealTimeNoisySpeechDatasetWithTimeFrequencyFeatures(
-        dataset_path, test_dataset_path, runsettings.fs, runsettings.windows_time_size,
-        runsettings.overlap_percentage, runsettings.fft_points, runsettings.time_feature_size,
-        randomize=runsettings.test_randomize_data, max_samples=runsettings.test_on_n_samples,
-        normalize=runsettings.normalize_data, predict_on_time_windows=runsettings.predict_on_time_windows
+    tester = ModelEvaluator(
+        writer, dataset_path, test_dataset_path, 1, 'test', runsettings.test_on_n_samples,
+        runsettings.test_batch_size, runsettings.test_generate_audios, output_dir, False, None,
+        push_metrics_every_x_batches=True
     )
-
-    test_data_loader = DataLoader(test_dataset, batch_size=runsettings.test_batch_size)
-
-    runsettings.net.to(device)
-    runsettings.net.eval()
-
-    print('Start predicting')
-
-    test_metric_evaluator = MetricsEvaluator(
-        writer, test_dataset, 'test', runsettings.filter_type, runsettings.features_type, runsettings.fs,
-        compute_stoi_and_pesq=runsettings.test_compute_stoi_and_pesq,
-        generate_audios=runsettings.test_generate_audios
-    )
-
-    with torch.no_grad():
-        for i_batch, sample_batched in enumerate(test_data_loader):
-            runsettings.net.eval()
-
-            noisy_speeches = sample_batched['noisy_speech']
-            noisy_output_speeches = sample_batched['noisy_output_speech']
-            clean_speeches = sample_batched['clean_speech']
-            noises = sample_batched['noise']
-            samples_idx = sample_batched['sample_idx']
-
-            noisy_speeches = noisy_speeches.to(device)
-            noisy_output_speeches = noisy_output_speeches.to(runsettings.device)
-            clean_speeches = clean_speeches.to(device)
-            noises = noises.to(device)
-
-            outputs, _ = runsettings.net(noisy_speeches)
-            if runsettings.normalize_data:
-                outputs = sigmoid(outputs)
-
-            mse_loss = criterion(outputs, clean_speeches)
-
-            accumulated_samples_idx = test_dataset.accumulate_filtered_frames(outputs.cpu(), samples_idx)
-            test_metric_evaluator.add_metrics(
-                mse_loss, outputs, clean_speeches, noises, noisy_output_speeches, accumulated_samples_idx
-            )
-
-            if (i_batch + 1) % runsettings.show_metrics_every_n_batches == 0:
-                test_metric_evaluator.push_metrics(i_batch + 1, 1)
+    tester.evaluate(0)
 
 
 if __name__ == "__main__":
