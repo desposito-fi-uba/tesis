@@ -43,11 +43,11 @@ train_generate_audios = False
 train_compute_stoi_and_pesq = False
 
 show_metrics_every_n_batches = 50
-save_model_every_n_batches = 500
+save_model_every_n_batches = 250
 
 # Eval config
 eval_training = True
-eval_every_n_batches = 100
+eval_every_n_batches = 250
 eval_on_n_samples = 500
 eval_batch_size = 128
 eval_generate_audios = True

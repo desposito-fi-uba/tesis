@@ -20,7 +20,7 @@ from adaptivefilterdatasethandler import AdaptiveFilteringDataset
 from audiolib import segmental_snr_mixer
 from constants import AudioType
 from realtimednnfilterdatasethandler import RealTimeNoisySpeechDatasetWithTimeFrequencyFeatures
-from utils import pesq, remove_not_matched_snr_segments
+from utils import pesq, remove_not_matched_snr_segments, stoi
 
 
 @click.group()
@@ -401,6 +401,49 @@ def plot_dnn_stationary_noise(input_dir):
     axs.grid()
     fig.savefig('./store/dnn_ecm_and_noise_level.png')
     plt.close(fig)
+
+
+@entry_point.command()
+@click.option('--input-dir', prompt='Dataset path', type=str)
+def plot_dnn_stationary_noise(input_dir):
+    dataset_path = input_dir
+    test_dataset_path = os.path.join(dataset_path, 'test.csv')
+    samples = pd.read_csv(test_dataset_path)
+    num_samples = len(samples)
+
+    snrs_used = ['-5', '0', '5', '10', '15', '20', 'inf']
+
+    noisy_pesq = {snr: [] for snr in snrs_used}
+    noisy_stoi = {snr: [] for snr in snrs_used}
+
+    filtered_pesq = {snr: [] for snr in snrs_used}
+    filtered_stoi = {snr: [] for snr in snrs_used}
+
+    for sample_idx in range(num_samples):
+        snr = str(int(samples.iloc[sample_idx, 3])) if not math.isinf(samples.iloc[sample_idx, 3]) else 'inf'
+
+        clean_path = os.path.join(dataset_path, samples.iloc[sample_idx, 1])
+        audio_name = clean_path.replace('-clean.wav', '.wav').replace(dataset_path, '')[1:]
+        filtered_path = os.path.join(dataset_path, '..', 'filtered', 'dnn', audio_name)
+
+        noisy_path = os.path.join(dataset_path, samples.iloc[sample_idx, 0])
+
+        filtered, _ = librosa.load(filtered_path, sr=None)
+        clean, sr = librosa.load(clean_path, sr=None)
+        noisy, _ = librosa.load(noisy_path, sr=None)
+
+        noisy_pesq[snr].append(pesq(clean, noisy, sr))
+        noisy_stoi[snr].append(stoi(clean, noisy, sr))
+
+        filtered_pesq[snr].append(pesq(clean, filtered, sr))
+        filtered_stoi[snr].append(stoi(clean, filtered, sr))
+
+    for snr in snrs_used:
+        print(f'Noisy PESQ para SNR {snr}: {np.asarray(noisy_pesq[snr].mean())}')
+        print(f'Filtered PESQ para SNR {snr}: {np.asarray(filtered_pesq[snr].mean())}')
+
+        print(f'Noisy STOI para SNR {snr}: {np.asarray(noisy_stoi[snr].mean())}')
+        print(f'Filtered STOI para SNR {snr}: {np.asarray(filtered_stoi[snr].mean())}')
 
 
 def exponential_moving_average_smoothing(x, weight):

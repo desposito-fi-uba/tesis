@@ -382,10 +382,10 @@ class RealTimeNoisySpeechDatasetWithTimeFrequencyFeatures(IterableDataset):
         stft_noise = audio_data['stft_noise'][0, :, :, :]
         stft_filtered = audio_data['stft_filtered_speech'][0, :, :, :]
         return (
-            self.denormalize(stft_clean),
-            self.denormalize(stft_noisy_output),
-            self.denormalize(stft_noisy),
-            self.denormalize(stft_noise),
+            self.denormalize(stft_clean.cpu().numpy()),
+            self.denormalize(stft_noisy_output.cpu().numpy()),
+            self.denormalize(stft_noisy.cpu().numpy()),
+            self.denormalize(stft_noise.cpu().numpy()),
             self.denormalize(stft_filtered),
             np.arange(0, stft_filtered.shape[0]),
             np.arange(0, stft_filtered.shape[1]) * self.windows_points_size / self.fs

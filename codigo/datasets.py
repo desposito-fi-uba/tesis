@@ -62,8 +62,8 @@ def generate(max_amount, env):
     noise = None
     noise_type = None
     sr = 16000
-    silent = 0.2
-    silent_samples = int(sr*silent)
+    #silent = 0.2
+    #silent_samples = int(sr*silent)
     continue_generating = True
     print('Starting mixing {} clean speeches with {} noises'.format(len(audios), len(noises)))
     for index, audio_path in enumerate(audios):
@@ -79,7 +79,8 @@ def generate(max_amount, env):
             continue
 
         amount_speech_samples = len(clean_speech)
-        noise_to_mix = np.zeros((silent_samples + amount_speech_samples, ))
+        #noise_to_mix = np.zeros((silent_samples + amount_speech_samples, ))
+        noise_to_mix = np.ones((amount_speech_samples, )) * np.finfo(float).eps
 
         snr_choices = [-5, 0, 5, 10, 15, 20, -5, 0, 5, 10, 15, 20, np.inf]
         snr = snr_choices[np.random.randint(len(snr_choices))]
@@ -106,14 +107,17 @@ def generate(max_amount, env):
             available_noise = noise[amount_noise_used:]
             amount_available_noise = len(available_noise)
             if amount_available_noise > amount_speech_samples:
-                noise_to_mix[silent_samples:] = available_noise[:amount_speech_samples]
+                #noise_to_mix[silent_samples:] = available_noise[:amount_speech_samples]
+                noise_to_mix = available_noise[:amount_speech_samples]
                 amount_noise_used = amount_noise_used + amount_speech_samples - 1
             elif amount_available_noise == amount_speech_samples:
-                noise_to_mix[silent_samples:] = available_noise
+                noise_to_mix = available_noise
+                #noise_to_mix[silent_samples:] = available_noise
                 amount_noise_used = 0
                 noise_index += 1
             else:
-                noise_to_mix[silent_samples:amount_available_noise+silent_samples] = available_noise
+                noise_to_mix[:amount_available_noise] = available_noise
+                #noise_to_mix[silent_samples:amount_available_noise+silent_samples] = available_noise
                 amount_noise_used = 0
                 noise_index += 1
 
