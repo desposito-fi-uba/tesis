@@ -9,9 +9,9 @@ class ConvDenoisingRealTimeNet(nn.Module):
 
         self.store_intermediate_outputs = store_intermediate_outputs
 
-        down = [(2 * 256, 128), (2 * 128, 64), (2 * 64, 32), (2 * 32, 16)]
-        up = [(16, 32), (32, 64), (64, 128), (128, 256)]
-        middle_block = 256
+        down = [(2 * 512, 256), (2 * 256, 128), (2 * 128, 64), (2 * 64, 32), (2 * 32, 16)]
+        up = [(16, 32), (32, 64), (64, 128), (128, 256), (256, 512)]
+        middle_block = 512
         first_last_layer = 16
 
         self.input_layer = self.build_input_layer(1, first_last_layer)

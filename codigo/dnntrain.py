@@ -145,6 +145,7 @@ def train(
 
     print('Preparing to train')
     train_csv_path = os.path.join(dataset_path, 'train.csv')
+    test_csv_path = os.path.join(dataset_path, 'test.csv')
 
     models_names = [(
             experiment_id +
@@ -162,17 +163,17 @@ def train(
     print('Output tensorboard events to {}. Resuming from step {}'.format(event_logs_dir, batches_counter))
     writer = SummaryWriter(log_dir=event_logs_dir, purge_step=batches_counter)
 
-    validator = ModelEvaluator(
-        writer, dataset_path, train_csv_path, 1, 'val', runsettings.eval_on_n_samples,
-        runsettings.eval_batch_size, runsettings.eval_generate_audios, output_dir, False, storage_client,
-        push_metrics_every_x_batches=False
+    tester = ModelEvaluator(
+        writer, dataset_path, test_csv_path, 1, 'test', runsettings.test_on_n_samples,
+        runsettings.test_batch_size, runsettings.test_generate_audios, output_dir, False, storage_client,
+        push_metrics_every_x_batches=False, compute_pesq_and_stoi=runsettings.test_compute_stoi_and_pesq
     )
 
     trainer = ModelEvaluator(
         writer, dataset_path, train_csv_path, epochs, 'train', runsettings.train_on_n_samples,
         runsettings.train_batch_size, runsettings.train_generate_audios, output_dir, True, storage_client,
-        validation_model_evaluator=validator, models_names_iterator=models_names_iterator,
-        push_metrics_every_x_batches=True
+        testing_model_evaluator=tester, models_names_iterator=models_names_iterator,
+        push_metrics_every_x_batches=True, compute_pesq_and_stoi=runsettings.train_compute_stoi_and_pesq
     )
     trainer.evaluate(batches_counter)
 

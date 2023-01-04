@@ -13,7 +13,7 @@
 1. Ejecutar script de entrenamiento 
 
 ```
-python -m dnntrain --epochs=10 --input-dir=./dataset/audios_train --output-dir=./trained-models --experiment-name=dnn-train
+python -m dnntrain --epochs=10 --input-dir=./dataset --output-dir=./trained-models --experiment-name=dnn-train
 ```
 
 2. Ejecutar tensorboard
@@ -46,7 +46,7 @@ Seguir pasos en: https://cloud.google.com/ai-platform/training/docs/using-contai
 
 #### Dataset
 
-* Comprimir `tar -czvf dataset.tar.gz ./dataset/audios_train`
+* Comprimir `tar -czvf dataset.tar.gz ./dataset`
 * Subir `gsutil cp ./dataset.tar.gz gs://desposito-noisefilter`
 
 #### Configuración de entrenamiento
@@ -119,11 +119,17 @@ gcloud ai-platform jobs submit training $JOB_NAME \
 1. Ejecutar script de pruebas 
 
 ```
-python -m dnnpredict --input-dir=./dataset/audios_test --output-dir=./trained-models --experiment-name=dnn-test
+python -m dnnpredict --input-dir=./dataset --output-dir=./trained-models --experiment-name=dnn-test
 ```
 
 2. Ejecutar tensorboard
 
 ```
 tensorboard --logdir=./trained-models/logs
+```
+
+## Obtener métricas PESQ y STOI
+
+```
+python -m plotter plot-pesq-stoi --input-dir=./dataset/audios_test
 ```

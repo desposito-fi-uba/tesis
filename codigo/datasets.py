@@ -62,14 +62,10 @@ def generate(max_amount, env):
     noise = None
     noise_type = None
     sr = 16000
-    #silent = 0.2
-    #silent_samples = int(sr*silent)
-    continue_generating = True
+    silent = 0.2
+    silent_samples = int(sr*silent)
     print('Starting mixing {} clean speeches with {} noises'.format(len(audios), len(noises)))
     for index, audio_path in enumerate(audios):
-        if not continue_generating:
-            break
-
         _, file_name = os.path.split(audio_path)
         file_name_without_extension, extension = os.path.splitext(file_name)
         try:
@@ -79,80 +75,68 @@ def generate(max_amount, env):
             continue
 
         amount_speech_samples = len(clean_speech)
-        #noise_to_mix = np.zeros((silent_samples + amount_speech_samples, ))
-        noise_to_mix = np.ones((amount_speech_samples, )) * np.finfo(float).eps
+        noise_to_mix = np.zeros((amount_speech_samples, ))
+        # noise_to_mix = np.ones((amount_speech_samples, )) * np.finfo(float).eps
 
-        snr_choices = [-5, 0, 5, 10, 15, 20, -5, 0, 5, 10, 15, 20, np.inf]
+        snr_choices = [-5, 0, 5, 10, 15, 20, 40]
         snr = snr_choices[np.random.randint(len(snr_choices))]
 
-        if snr != np.inf:
+        amount_noise_generated = silent_samples
+        while amount_noise_generated < amount_speech_samples:
             if amount_noise_used == 0:
                 if noise_index + 1 > len(noises):
                     np.random.shuffle(noises)
                     print('Run out of noise data after processing {}'.format(index+1))
                     noise_index = 0
 
-                continue_reading_noises = True
-                while continue_reading_noises:
-                    try:
-                        noise, _ = librosa.load(noises[noise_index], sr=sr)
-                        noise_type = os.path.basename(noises[noise_index]).split('_')[0]
-                        continue_reading_noises = False
-                        break
-                    except Exception:
-                        print('Error reading noise {}. Continuing with the next audio'.format(audio_path))
-                        noise_index += 1
-                        continue
+                try:
+                    noise, _ = librosa.load(noises[noise_index], sr=sr)
+                except Exception:
+                    print('Error reading noise {}. Continuing with the next audio'.format(audio_path))
+                    noise_index += 1
+                    continue
 
-            available_noise = noise[amount_noise_used:]
-            amount_available_noise = len(available_noise)
-            if amount_available_noise > amount_speech_samples:
-                #noise_to_mix[silent_samples:] = available_noise[:amount_speech_samples]
-                noise_to_mix = available_noise[:amount_speech_samples]
-                amount_noise_used = amount_noise_used + amount_speech_samples - 1
-            elif amount_available_noise == amount_speech_samples:
-                noise_to_mix = available_noise
-                #noise_to_mix[silent_samples:] = available_noise
-                amount_noise_used = 0
-                noise_index += 1
+            reminder_noise_to_generate = amount_speech_samples - amount_noise_generated
+            curr_noise_length = len(noise) - amount_noise_used
+            if curr_noise_length > reminder_noise_to_generate:
+                noise_to_mix[amount_noise_generated:amount_noise_generated+reminder_noise_to_generate] = (
+                    noise[amount_noise_used:amount_noise_used+reminder_noise_to_generate]
+                )
+                amount_noise_used += reminder_noise_to_generate
+                amount_noise_generated += reminder_noise_to_generate
             else:
-                noise_to_mix[:amount_available_noise] = available_noise
-                #noise_to_mix[silent_samples:amount_available_noise+silent_samples] = available_noise
+                noise_to_mix[amount_noise_generated:amount_noise_generated+curr_noise_length] = (
+                    noise[amount_noise_used:]
+                )
                 amount_noise_used = 0
                 noise_index += 1
+                amount_noise_generated += curr_noise_length + silent_samples
 
-            clean_new_level, noise_new_level, noisy_speech, _ = segmental_snr_mixer(clean_speech, noise_to_mix, snr)
+        clean_new_level, noise_new_level, noisy_speech, _ = segmental_snr_mixer(clean_speech, noise_to_mix, snr)
 
-            clean_path_with_out_base_path = os.path.join(
-                '{}-{}-clean{}'.format(index, file_name_without_extension, extension))
-            noisy_path_with_out_base_path = os.path.join(
-                '{}-{}-noisy{}'.format(index, file_name_without_extension, extension))
-            noise_path_with_out_base_path = os.path.join(
-                '{}-{}-noise{}'.format(index, file_name_without_extension, extension))
-            clean_path = join(audios_path, clean_path_with_out_base_path)
-            noisy_path = join(audios_path, noisy_path_with_out_base_path)
-            noise_path = join(audios_path, noise_path_with_out_base_path)
-            wavfile.write(clean_path, sr, clean_new_level)
-            wavfile.write(noisy_path, sr, noisy_speech)
-            wavfile.write(noise_path, sr, noise_new_level)
+        clean_path_with_out_base_path = os.path.join(
+            '{}-{}-clean{}'.format(index, file_name_without_extension, extension))
+        noisy_path_with_out_base_path = os.path.join(
+            '{}-{}-noisy{}'.format(index, file_name_without_extension, extension))
+        noise_path_with_out_base_path = os.path.join(
+            '{}-{}-noise{}'.format(index, file_name_without_extension, extension))
+        clean_path = join(audios_path, clean_path_with_out_base_path)
+        noisy_path = join(audios_path, noisy_path_with_out_base_path)
+        noise_path = join(audios_path, noise_path_with_out_base_path)
+        wavfile.write(clean_path, sr, clean_new_level)
+        wavfile.write(noisy_path, sr, noisy_speech)
+        wavfile.write(noise_path, sr, noise_new_level)
 
-            rows.append([
-                noisy_path_with_out_base_path, clean_path_with_out_base_path, noise_path_with_out_base_path, snr,
-                noise_type
-            ])
-        else:
-            clean_new_level = clean_speech
-
-            clean_path_with_out_base_path = os.path.join(
-                '{}-{}-clean{}'.format(index, file_name_without_extension, extension))
-            clean_path = join(audios_path, clean_path_with_out_base_path)
-            wavfile.write(clean_path, sr, clean_new_level)
-
-            rows.append([clean_path_with_out_base_path, clean_path_with_out_base_path, None, snr, noise_type])
+        rows.append([
+            join('.', f'audios_{env}', noisy_path_with_out_base_path),
+            join('.', f'audios_{env}', clean_path_with_out_base_path),
+            join('.', f'audios_{env}', noise_path_with_out_base_path),
+            snr, noise_type
+        ])
 
     random.shuffle(rows)
 
-    csv_path = join(audios_path, f'{env}.csv')
+    csv_path = join(dataset_path, f'{env}.csv')
     with open(csv_path, 'w') as csv_file:
         writer = csv.writer(csv_file)
         for row in rows:

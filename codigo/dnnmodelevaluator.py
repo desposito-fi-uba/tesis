@@ -8,14 +8,14 @@ import runsettings
 from constants import OptimizerType
 from dnnmetrics import MetricsEvaluator
 from realtimednnfilterdatasethandler import RealTimeNoisySpeechDatasetWithTimeFrequencyFeatures
-from utils import torch_mse
 
 
 class ModelEvaluator(object):
     def __init__(
             self, tensorboard_writer, dataset_path, csv_path, num_epochs, mode, dataset_max_samples,
             batch_size, generate_audios, output_dir, is_train, storage_client,
-            validation_model_evaluator=None, models_names_iterator=None, push_metrics_every_x_batches=None
+            testing_model_evaluator=None, models_names_iterator=None, push_metrics_every_x_batches=None,
+            compute_pesq_and_stoi=False
     ):
         self.push_metrics_every_x_batches = (
             push_metrics_every_x_batches if push_metrics_every_x_batches is not None else True
@@ -24,19 +24,14 @@ class ModelEvaluator(object):
         self.csv_path = csv_path
         self.storage_client = storage_client
 
+        self.batch_size = batch_size
+        self.dataset_path = dataset_path
+        self.csv_path = csv_path
+        self.dataset_max_samples = dataset_max_samples
+
         self.num_epochs = num_epochs
 
-        discard_dataset_samples_idx = (
-            validation_model_evaluator.dataset.samples_order if validation_model_evaluator else None
-        )
-
-        self.dataset = RealTimeNoisySpeechDatasetWithTimeFrequencyFeatures(
-            dataset_path, csv_path, runsettings.fs, runsettings.windows_time_size,
-            runsettings.overlap_percentage, runsettings.fft_points, runsettings.time_feature_size,
-            runsettings.device, randomize=runsettings.randomize_data, max_samples=dataset_max_samples,
-            normalize=runsettings.normalize_data, predict_on_time_windows=runsettings.predict_on_time_windows,
-            discard_dataset_samples_idx=discard_dataset_samples_idx
-        )
+        self.dataset = self.init_dataset()
 
         self.data_loader = DataLoader(self.dataset, batch_size=batch_size)
 
@@ -54,13 +49,23 @@ class ModelEvaluator(object):
 
         self.metric_evaluator = MetricsEvaluator(
             tensorboard_writer, self.dataset, self.mode, runsettings.filter_type, runsettings.features_type,
-            runsettings.fs, generate_audios=generate_audios, push_to_tensorboard=True
+            runsettings.fs, generate_audios=generate_audios, push_to_tensorboard=True,
+            compute_pesq_and_stoi=compute_pesq_and_stoi
         )
 
-        self.validation_model_evaluator = validation_model_evaluator
+        self.testing_model_evaluator = testing_model_evaluator
         self.models_names_iterator = models_names_iterator
         self.output_dir = output_dir
         self.is_train = is_train
+
+    def init_dataset(self):
+        return RealTimeNoisySpeechDatasetWithTimeFrequencyFeatures(
+            self.dataset_path, self.csv_path, runsettings.fs, runsettings.windows_time_size,
+            runsettings.overlap_percentage, runsettings.fft_points, runsettings.time_feature_size,
+            runsettings.device, randomize=runsettings.randomize_data, max_samples=self.dataset_max_samples,
+            normalize=runsettings.normalize_data, predict_on_time_windows=runsettings.predict_on_time_windows,
+            batch_size=self.batch_size
+        )
 
     def evaluate(self, batches_counter):
         if self.is_train:
@@ -111,10 +116,10 @@ class ModelEvaluator(object):
 
                 if (
                         self.is_train and
-                        runsettings.eval_training and
-                        batches_counter % runsettings.eval_every_n_batches == 0
+                        runsettings.test_while_training and
+                        batches_counter % runsettings.test_while_training_every_n_batches == 0
                 ):
-                    self.validation_model_evaluator.evaluate(batches_counter)
+                    self.testing_model_evaluator.evaluate(batches_counter)
                     runsettings.net.train()
 
                 if self.is_train and batches_counter % runsettings.save_model_every_n_batches == 0:
@@ -136,3 +141,6 @@ class ModelEvaluator(object):
 
         if not self.push_metrics_every_x_batches:
             self.metric_evaluator.push_metrics(batches_counter)
+
+        if not self.is_train:
+            self.dataset = self.init_dataset()

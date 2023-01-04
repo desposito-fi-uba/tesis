@@ -22,7 +22,7 @@ class RealTimeNoisySpeechDatasetWithTimeFrequencyFeatures(IterableDataset):
     def __init__(
             self, base_path, csv_file, fs, windows_time_size, overlap_percentage, fft_points, time_feature_size,
             device, max_samples=None, randomize=False, normalize=False, predict_on_time_windows=None,
-            discard_dataset_samples_idx=None
+            discard_dataset_samples_idx=None, batch_size: int = None
     ):
         self.base_path = base_path
         self.samples = pd.read_csv(csv_file)
@@ -58,11 +58,11 @@ class RealTimeNoisySpeechDatasetWithTimeFrequencyFeatures(IterableDataset):
 
         self.processed_audios = OrderedDict()
 
-        self.max_queue_size = 50
+        self.max_queue_size = batch_size//10 if batch_size is not None else 10
 
-        self.min_audio_value = 10**-20
-        self.min_value = -25
-        self.max_value = 0
+        self.min_value = 10 ** -25
+        self.min_log_value = -25
+        self.max_log_value = 0
         self.normalize_io = normalize
 
         self.noise_type = None
@@ -130,12 +130,9 @@ class RealTimeNoisySpeechDatasetWithTimeFrequencyFeatures(IterableDataset):
         noise_type = self.samples.iloc[self.samples_order[self.sample_idx], 4]
         snr = self.samples.iloc[self.samples_order[self.sample_idx], 3]
 
-        if math.isinf(snr):
-            noise = np.ones(noisy_speech.shape) * self.min_audio_value
-        else:
-            noise_path = os.path.join(
-                self.base_path, self.samples.iloc[self.samples_order[self.sample_idx], 2])
-            _, noise = wavfile.read(noise_path)
+        noise_path = os.path.join(
+            self.base_path, self.samples.iloc[self.samples_order[self.sample_idx], 2])
+        _, noise = wavfile.read(noise_path)
 
         audio_name = self.get_audio_name(clean_speech_path)
         return noisy_speech, clean_speech, noise, audio_name, snr, noise_type
@@ -195,31 +192,35 @@ class RealTimeNoisySpeechDatasetWithTimeFrequencyFeatures(IterableDataset):
             nfft=self.fft_points - 1, return_onesided=True
         )
         audio_magnitude_stft = np.abs(audio_complex_stft)
-        audio_magnitude_stft[audio_magnitude_stft < self.min_audio_value] = self.min_audio_value
+        audio_magnitude_stft[audio_magnitude_stft < self.min_value] = self.min_value
         audio_magnitude_stft = np.log10(audio_magnitude_stft).astype(np.float32)
         audio_magnitude_stft = self.normalize(audio_magnitude_stft)
         return audio_magnitude_stft
 
-    def crop_audio(self, audio):
-        mask = np.logical_and(audio >= 0, audio < self.min_audio_value)
-        audio[mask] = self.min_audio_value
-
-        mask = np.logical_and(audio < 0, audio > -self.min_audio_value)
-        audio[mask] = -self.min_audio_value
-
-        return audio
+    # def crop_audio(self, audio):
+    #     mask = np.logical_and(audio >= 0, audio < self.min_value)
+    #     audio[mask] = self.min_value
+    #
+    #     mask = np.logical_and(audio < 0, audio > -self.min_value)
+    #     audio[mask] = -self.min_value
+    #
+    #     return audio
 
     def prepare_input(self, audio):
         audio_size = len(audio)
         frame_size = (self.time_feature_size - 1) * self.overlap_points
         amount_frames = (math.ceil((audio_size - frame_size) / self.windows_points_size)) + 1
         padded_audio_size = (amount_frames - 1) * self.windows_points_size + frame_size
+        # audio = np.pad(
+        #     audio, [(0, padded_audio_size - audio_size)],
+        #     constant_values=self.min_audio_value
+        # )
         audio = np.pad(
             audio, [(0, padded_audio_size - audio_size)],
-            constant_values=self.min_audio_value
+            constant_values=0
         )
 
-        audio = self.crop_audio(audio)
+        # audio = self.crop_audio(audio)
 
         audio_frames_complex_stft = np.zeros((self.fft_points//2, self.time_feature_size, amount_frames), dtype=complex)
         _, _, audio_complex_stft = stft(
@@ -231,7 +232,7 @@ class RealTimeNoisySpeechDatasetWithTimeFrequencyFeatures(IterableDataset):
             audio_frames_complex_stft[:, :, i] = audio_complex_stft[:, i*2:self.time_feature_size+(i*2)]
 
         audio_frames_magnitude_stft = np.abs(audio_frames_complex_stft)
-        # audio_frames_magnitude_stft[audio_frames_magnitude_stft < self.min_audio_value] = self.min_audio_value
+        audio_frames_magnitude_stft[audio_frames_magnitude_stft < self.min_value] = self.min_value
         audio_frames_magnitude_stft = np.log10(audio_frames_magnitude_stft).astype(np.float32)
         audio_frames_magnitude_stft = self.normalize(audio_frames_magnitude_stft)
         audio_frames_magnitude_stft = np.expand_dims(audio_frames_magnitude_stft, axis=0)
@@ -248,12 +249,16 @@ class RealTimeNoisySpeechDatasetWithTimeFrequencyFeatures(IterableDataset):
         frame_size = (self.time_feature_size - 1) * self.overlap_points
         amount_frames = (math.ceil((audio_size - frame_size) / self.windows_points_size)) + 1
         padded_audio_size = (amount_frames - 1) * self.windows_points_size + frame_size
+        # audio = np.pad(
+        #     audio, [(0, padded_audio_size - audio_size)],
+        #     constant_values=self.min_value
+        # )
         audio = np.pad(
             audio, [(0, padded_audio_size - audio_size)],
-            constant_values=self.min_audio_value
+            constant_values=0
         )
 
-        audio = self.crop_audio(audio)
+        # audio = self.crop_audio(audio)
 
         audio_frames_complex_stft = np.zeros((self.fft_points // 2, 3, amount_frames), dtype=complex)
         _, _, audio_complex_stft = stft(
@@ -269,7 +274,7 @@ class RealTimeNoisySpeechDatasetWithTimeFrequencyFeatures(IterableDataset):
             audio_frames_complex_stft[:, :, i] = audio_frame_complex_stft[:, start_index:end_index]
 
         audio_frames_magnitude_stft = np.abs(audio_frames_complex_stft)
-        # audio_frames_magnitude_stft[audio_frames_magnitude_stft < self.min_audio_value] = self.min_audio_value
+        audio_frames_magnitude_stft[audio_frames_magnitude_stft < self.min_value] = self.min_value
         audio_frames_magnitude_stft = np.log10(audio_frames_magnitude_stft).astype(np.float32)
         audio_frames_magnitude_stft = self.normalize(audio_frames_magnitude_stft)
         audio_frames_magnitude_stft = np.expand_dims(audio_frames_magnitude_stft, axis=0)
@@ -417,13 +422,13 @@ class RealTimeNoisySpeechDatasetWithTimeFrequencyFeatures(IterableDataset):
         if not self.normalize_io:
             return frame
 
-        return (frame - self.min_value) / (self.max_value - self.min_value)
+        return (frame - self.min_log_value) / (self.max_log_value - self.min_log_value)
 
     def denormalize(self, frame):
         if not self.normalize_io:
             return frame
 
-        return frame * (self.max_value - self.min_value) + self.min_value
+        return frame * (self.max_log_value - self.min_log_value) + self.min_log_value
 
     def get_audio_data(self, sample_idx):
         return self.processed_audios[sample_idx]

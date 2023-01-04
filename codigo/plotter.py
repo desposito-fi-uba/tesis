@@ -405,7 +405,7 @@ def plot_dnn_stationary_noise(input_dir):
 
 @entry_point.command()
 @click.option('--input-dir', prompt='Dataset path', type=str)
-def plot_dnn_stationary_noise(input_dir):
+def plot_pesq_stoi(input_dir):
     dataset_path = input_dir
     test_dataset_path = os.path.join(dataset_path, 'test.csv')
     samples = pd.read_csv(test_dataset_path)
@@ -419,31 +419,110 @@ def plot_dnn_stationary_noise(input_dir):
     filtered_pesq = {snr: [] for snr in snrs_used}
     filtered_stoi = {snr: [] for snr in snrs_used}
 
+    noisy_pesq_total = []
+    noisy_stoi_total = []
+
+    filtered_pesq_total = []
+    filtered_stoi_total = []
+
+    def plot_result(audio_num):
+        for snr in snrs_used:
+            if noisy_pesq[snr]:
+                print(f'[{audio_num}] Noisy PESQ para SNR {snr}: {np.asarray(noisy_pesq[snr]).mean()}')
+            else:
+                print(f'[{audio_num}] Noisy PESQ para SNR {snr}: None')
+
+            if filtered_pesq[snr]:
+                print(f'[{audio_num}] Filtered PESQ para SNR {snr}: {np.asarray(filtered_pesq[snr]).mean()}')
+            else:
+                print(f'[{audio_num}] Filtered PESQ para SNR {snr}: None')
+
+            print('\n')
+
+            if noisy_stoi[snr]:
+                print(f'[{audio_num}] Noisy STOI para SNR {snr}: {np.asarray(noisy_stoi[snr]).mean()}')
+            else:
+                print(f'[{audio_num}] Noisy STOI para SNR {snr}: None')
+
+            if filtered_stoi[snr]:
+                print(f'[{audio_num}] Filtered STOI para SNR {snr}: {np.asarray(filtered_stoi[snr]).mean()}')
+            else:
+                print(f'[{audio_num}] Filtered STOI para SNR {snr}: None')
+
+            print('\n\n')
+
+        if noisy_pesq_total:
+            print(f'[{audio_num}] Noisy PESQ: {np.asarray(noisy_pesq_total).mean()}')
+        else:
+            print(f'[{audio_num}] Noisy PESQ: None')
+
+        if filtered_pesq_total:
+            print(f'[{audio_num}] Filtered PESQ: {np.asarray(filtered_pesq_total).mean()}')
+        else:
+            print(f'[{audio_num}] Filtered PESQ: None')
+
+        print('\n')
+
+        if noisy_stoi_total:
+            print(f'[{audio_num}] Noisy STOI: {np.asarray(noisy_stoi_total).mean()}')
+        else:
+            print(f'[{audio_num}] Noisy STOI: None')
+
+        if filtered_stoi_total:
+            print(f'[{audio_num}] Filtered STOI: {np.asarray(filtered_stoi_total).mean()}')
+        else:
+            print(f'[{audio_num}] Filtered STOI: None')
+
+        print('\n\n')
+
     for sample_idx in range(num_samples):
         snr = str(int(samples.iloc[sample_idx, 3])) if not math.isinf(samples.iloc[sample_idx, 3]) else 'inf'
 
         clean_path = os.path.join(dataset_path, samples.iloc[sample_idx, 1])
+        clean, sr = librosa.load(clean_path, sr=None)
+
         audio_name = clean_path.replace('-clean.wav', '.wav').replace(dataset_path, '')[1:]
+
         filtered_path = os.path.join(dataset_path, '..', 'filtered', 'dnn', audio_name)
+        filtered, _ = librosa.load(filtered_path, sr=None)
+
+        noise = None
+        if snr != 'inf':
+            noise_path = os.path.join(dataset_path, samples.iloc[sample_idx, 2])
+            noise, _ = librosa.load(noise_path, sr=None)
 
         noisy_path = os.path.join(dataset_path, samples.iloc[sample_idx, 0])
-
-        filtered, _ = librosa.load(filtered_path, sr=None)
-        clean, sr = librosa.load(clean_path, sr=None)
         noisy, _ = librosa.load(noisy_path, sr=None)
 
-        noisy_pesq[snr].append(pesq(clean, noisy, sr))
-        noisy_stoi[snr].append(stoi(clean, noisy, sr))
+        if noise is not None:
+            clean, noisy, noise, filtered = remove_not_matched_snr_segments(
+                clean, noisy, noise, filtered, int(snr), runsettings.fs
+            )
 
-        filtered_pesq[snr].append(pesq(clean, filtered, sr))
-        filtered_stoi[snr].append(stoi(clean, filtered, sr))
+        pesq_value = pesq(clean, noisy, sr)
+        if pesq_value:
+            noisy_pesq[snr].append(pesq_value)
+            noisy_pesq_total.append(pesq_value)
 
-    for snr in snrs_used:
-        print(f'Noisy PESQ para SNR {snr}: {np.asarray(noisy_pesq[snr].mean())}')
-        print(f'Filtered PESQ para SNR {snr}: {np.asarray(filtered_pesq[snr].mean())}')
+        stoi_value = stoi(clean, noisy, sr)
+        if stoi_value:
+            noisy_stoi[snr].append(stoi_value)
+            noisy_stoi_total.append(stoi_value)
 
-        print(f'Noisy STOI para SNR {snr}: {np.asarray(noisy_stoi[snr].mean())}')
-        print(f'Filtered STOI para SNR {snr}: {np.asarray(filtered_stoi[snr].mean())}')
+        pesq_value = pesq(clean, filtered, sr)
+        if pesq_value:
+            filtered_pesq[snr].append(pesq_value)
+            filtered_pesq_total.append(pesq_value)
+
+        stoi_value = stoi(clean, filtered, sr)
+        if stoi_value:
+            filtered_stoi[snr].append(stoi_value)
+            filtered_stoi_total.append(stoi_value)
+
+        if (sample_idx + 1) % 100 == 0:
+            plot_result(sample_idx + 1)
+
+    plot_result(num_samples)
 
 
 def exponential_moving_average_smoothing(x, weight):
@@ -461,6 +540,17 @@ def convolution_smoothing(y, box_pts):
     box = np.ones(box_pts)/box_pts
     y_smooth = np.convolve(y, box, mode='same')
     return y_smooth
+
+
+stoi_threshold = {
+    '-5': (0.2, 0.7),
+    '0': (0.2, 0.75),
+    '5': (0.2, 0.8),
+    '10': (0.2, 0.85),
+    '15': (0.2, 0.9),
+    '20': (0.2, 0.97),
+    'inf': (0.2, 1)
+}
 
 
 if __name__ == '__main__':

@@ -21,10 +21,9 @@ def normalize_segmental_rms(audio, rms, target_level=-25):
 
 
 def segmental_snr_mixer(clean, noise, snr, target_level=-25, clipping_threshold=0.99):
-    if len(clean) > len(noise):
-        noise = np.append(noise, np.zeros(len(clean) - len(noise)))
-    else:
-        clean = np.append(clean, np.zeros(len(noise) - len(clean)))
+    if len(clean) != len(noise):
+        raise RuntimeError('Noise length and clean length should be the same.')
+
     clean = clean / (max(abs(clean)) + EPS)
     noise = noise / (max(abs(noise)) + EPS)
     rmsclean, rmsnoise = active_rms(clean=clean, noise=noise)
