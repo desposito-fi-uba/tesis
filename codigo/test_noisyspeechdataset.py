@@ -28,15 +28,17 @@ class NoisySpeechDatasetTestCase(TestCase):
         self.train_on_n_samples = None
         self.predict_on_time_windows = 60
         self.train_batch_size = 32
+        self.device = "cpu"
 
     def test_audio_reconstruction_in_real_time_dataset(self):
-        dataset_path = '/home/dsesposito/Diego/Tesis/dataset/audios'
+        dataset_path = './dataset'
         csv_file = os.path.join(dataset_path, 'train.csv')
         dataset = RealTimeNoisySpeechDatasetWithTimeFrequencyFeatures(
             dataset_path, csv_file, self.fs, self.windows_time_size,
             self.overlap_percentage, self.fft_points, self.time_feature_size,
-            randomize=self.randomize_data, max_samples=self.train_on_n_samples,
-            normalize=self.normalize_data, predict_on_time_windows=self.predict_on_time_windows
+            self.device, randomize=self.randomize_data, max_samples=self.train_on_n_samples,
+            normalize=self.normalize_data, predict_on_time_windows=self.predict_on_time_windows,
+            batch_size=self.train_batch_size
         )
 
         data_loader = DataLoader(dataset, batch_size=self.train_batch_size)
@@ -57,5 +59,10 @@ class NoisySpeechDatasetTestCase(TestCase):
 
         recovered_audio = dataset.get_audio(accumulated_sample_idx, AudioType.FILTERED)
         original_audio = dataset.get_audio(accumulated_sample_idx, AudioType.NOISY)
+        clean_audio = dataset.get_audio(accumulated_sample_idx, AudioType.CLEAN)
 
-        self.assertTrue(np.all((np.abs(recovered_audio - original_audio)) <= 10**(-np.finfo(np.float32).precision)))
+        clean_stft, original_stft, _, _, recovered_stft, _, _ = dataset.get_sample_data(accumulated_sample_idx)
+
+        self.assertTrue(np.all((np.abs(recovered_audio - original_audio)) <= 10 ** (-np.finfo(np.float32).precision)))
+
+        self.assertTrue(np.all((np.abs(recovered_stft - original_stft)) <= 10 ** (-np.finfo(np.float32).precision)))

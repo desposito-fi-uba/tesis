@@ -20,13 +20,9 @@ randomize_data = True
 lr = 0.001
 betas = (0.9, 0.999)
 momentum = 0
-decay = 0.0001
+decay = 0  # 0.0001
 
-time_feature_size = None
-if features_type == FeaturesType.TIME_FREQUENCY:
-    time_feature_size = 64
-elif features_type == FeaturesType.REAL_TIME_TIME_FREQUENCY:
-    time_feature_size = 64
+time_feature_size = 64
 
 predict_on_time_windows = 60
 
@@ -34,11 +30,11 @@ train_batch_size = 128
 train_on_n_samples = None
 train_generate_audios = False
 train_compute_stoi_and_pesq = False
-test_while_training = True
+test_while_training = False
 test_while_training_every_n_batches = 250
 
 show_metrics_every_n_batches = 50
-save_model_every_n_batches = 250
+save_model_every_n_batches = 100000
 
 test_batch_size = 32
 test_randomize_data = True

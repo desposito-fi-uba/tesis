@@ -65,9 +65,10 @@ def train(
 
     event_logs_dir = join(output_dir, logs_path, experiment_id)
 
-    storage_client = storage.Client()
+    storage_client = None
     dataset_path = input_dir
     if 'gs' in input_dir:
+        storage_client = storage.Client()
         print('Downloading dataset from {}'.format(input_dir))
         bucket_name_and_file_path = input_dir.split('gs://')[1]
         bucket_name = bucket_name_and_file_path.split('/', 1)[0]

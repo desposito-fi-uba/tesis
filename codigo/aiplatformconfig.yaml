@@ -1,7 +1,14 @@
 trainingInput:
+  scaleTier: "CUSTOM"
+  masterType: "n1-standard-8"
   masterConfig:
+    acceleratorConfig:
+      "count": "1"
+      "type": "NVIDIA_TESLA_K80"
     containerCommand: [
         "/bin/bash",
         "-c",
-        "python -u -m dnntrain --epochs=10 --input-dir=gs://desposito-noisefilter/dataset.tar.gz --output-dir=gs://desposito-noisefilter --experiment-name=dnn-train-time-decay1e-4-lr1e-3-w60-batch512-db-enhanced --overload-settings=gs://desposito-noisefilter/overload_settings.json"
+        "python -u -m dnntrain --epochs=10 --input-dir=gs://desposito-noisefilter/dataset_reduced.tar.gz --output-dir=gs://desposito-noisefilter --experiment-name=dnn-train-time-decay1e-4-lr1e-3-w60-batch256-overfitting--overload-settings=gs://desposito-noisefilter/overload_settings.json"
     ]
+    "diskConfig":
+      "bootDiskSizeGb": 200

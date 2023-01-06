@@ -1,15 +1,15 @@
 {
-  "train_batch_size": 512,
+  "train_batch_size": 256,
   "train_on_n_samples": null,
   "train_generate_audios": false,
   "show_metrics_every_n_batches": 50,
-  "save_model_every_n_batches": 250,
-  "test_while_training": true,
-  "test_while_training_every_n_batches": 250,
+  "save_model_every_n_batches": 1000000,
+  "test_while_training": false,
+  "test_while_training_every_n_batches": 1000,
   "test_on_n_samples": 500,
-  "test_batch_size": 512,
-  "eval_generate_audios": false,
+  "test_batch_size": 256,
+  "test_generate_audios": false,
   "lr": 0.001,
-  "decay": 0.0001,
+  "decay": 0,
   "device": "cuda:0"
 }

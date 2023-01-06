@@ -58,7 +58,7 @@ class RealTimeNoisySpeechDatasetWithTimeFrequencyFeatures(IterableDataset):
 
         self.processed_audios = OrderedDict()
 
-        self.max_queue_size = batch_size//10 if batch_size is not None else 10
+        self.max_queue_size = max(10, batch_size//20) if batch_size is not None else 10
 
         self.min_value = 10 ** -25
         self.min_log_value = -25

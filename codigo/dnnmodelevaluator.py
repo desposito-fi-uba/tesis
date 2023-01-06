@@ -31,9 +31,13 @@ class ModelEvaluator(object):
 
         self.num_epochs = num_epochs
 
-        self.dataset = self.init_dataset()
-
-        self.data_loader = DataLoader(self.dataset, batch_size=batch_size)
+        self.testing_model_evaluator = testing_model_evaluator
+        self.models_names_iterator = models_names_iterator
+        self.output_dir = output_dir
+        self.is_train = is_train
+        self.tensorboard_writer = tensorboard_writer
+        self.generate_audios = generate_audios
+        self.compute_pesq_and_stoi = compute_pesq_and_stoi
 
         if runsettings.optimizer_type == OptimizerType.SGD_WITH_MOMENTUM:
             self.optimizer = optim.SGD(
@@ -47,24 +51,25 @@ class ModelEvaluator(object):
         else:
             raise RuntimeError('Unknown optimizer type {}'.format(runsettings.optimizer_type))
 
-        self.metric_evaluator = MetricsEvaluator(
-            tensorboard_writer, self.dataset, self.mode, runsettings.filter_type, runsettings.features_type,
-            runsettings.fs, generate_audios=generate_audios, push_to_tensorboard=True,
-            compute_pesq_and_stoi=compute_pesq_and_stoi
-        )
-
-        self.testing_model_evaluator = testing_model_evaluator
-        self.models_names_iterator = models_names_iterator
-        self.output_dir = output_dir
-        self.is_train = is_train
+        self.dataset = None
+        self.data_loader = None
+        self.metric_evaluator = None
+        self.init_dataset()
 
     def init_dataset(self):
-        return RealTimeNoisySpeechDatasetWithTimeFrequencyFeatures(
+        self.dataset = RealTimeNoisySpeechDatasetWithTimeFrequencyFeatures(
             self.dataset_path, self.csv_path, runsettings.fs, runsettings.windows_time_size,
             runsettings.overlap_percentage, runsettings.fft_points, runsettings.time_feature_size,
             runsettings.device, randomize=runsettings.randomize_data, max_samples=self.dataset_max_samples,
             normalize=runsettings.normalize_data, predict_on_time_windows=runsettings.predict_on_time_windows,
             batch_size=self.batch_size
+        )
+        self.data_loader = DataLoader(self.dataset, batch_size=self.batch_size)
+
+        self.metric_evaluator = MetricsEvaluator(
+            self.tensorboard_writer, self.dataset, self.mode, runsettings.filter_type, runsettings.features_type,
+            runsettings.fs, generate_audios=self.generate_audios, push_to_tensorboard=True,
+            compute_pesq_and_stoi=self.compute_pesq_and_stoi
         )
 
     def evaluate(self, batches_counter):
@@ -114,6 +119,11 @@ class ModelEvaluator(object):
                         batches_counter % runsettings.show_metrics_every_n_batches == 0):
                     self.metric_evaluator.push_metrics(batches_counter)
 
+                print(f'[{i_batch + 1}] {self.mode}')
+
+                if not self.is_train and (i_batch + 1) % runsettings.show_metrics_every_n_batches == 0:
+                    print(f'[{i_batch + 1}] {self.mode}')
+
                 if (
                         self.is_train and
                         runsettings.test_while_training and
@@ -143,4 +153,4 @@ class ModelEvaluator(object):
             self.metric_evaluator.push_metrics(batches_counter)
 
         if not self.is_train:
-            self.dataset = self.init_dataset()
+            self.init_dataset()

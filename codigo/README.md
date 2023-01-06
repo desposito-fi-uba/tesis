@@ -27,7 +27,7 @@ tensorboard --logdir=./trained-models/logs
 1. Ejecutar entrenamiento 
 
 ```
-python -u -m dnntrain --epochs=10 --input-dir=gs://desposito-noisefilter/dataset.tar.gz --output-dir=gs://desposito-noisefilter --experiment-name=dnn-train --overload-settings=gs://desposito-noisefilter/overload_settings.json
+python -u -m dnntrain --epochs=10 --input-dir=gs://desposito-noisefilter/dataset_reduced.tar.gz --output-dir=gs://desposito-noisefilter --experiment-name=dnn-train --overload-settings=gs://desposito-noisefilter/overload_settings.json
 ```
 
 2. Ejecutar tensorboard
@@ -104,7 +104,6 @@ export now=$(date +"%Y%m%d_%H%M%S")
 export JOB_NAME="noise_filter_training_$now"
 
 gcloud ai-platform jobs submit training $JOB_NAME \
-  --scale-tier basic_gpu \
   --region us-west1 \
   --master-image-uri $IMAGE_URI \
   --config=aiplatformconfig.yaml
