@@ -130,9 +130,12 @@ class RealTimeNoisySpeechDatasetWithTimeFrequencyFeatures(IterableDataset):
         noise_type = self.samples.iloc[self.samples_order[self.sample_idx], 4]
         snr = self.samples.iloc[self.samples_order[self.sample_idx], 3]
 
-        noise_path = os.path.join(
-            self.base_path, self.samples.iloc[self.samples_order[self.sample_idx], 2])
-        _, noise = wavfile.read(noise_path)
+        if not math.isinf(snr):
+            noise_path = os.path.join(
+                self.base_path, self.samples.iloc[self.samples_order[self.sample_idx], 2])
+            _, noise = wavfile.read(noise_path)
+        else:
+            noise = np.zeros((len(clean_speech),))
 
         audio_name = self.get_audio_name(clean_speech_path)
         return noisy_speech, clean_speech, noise, audio_name, snr, noise_type
@@ -370,6 +373,17 @@ class RealTimeNoisySpeechDatasetWithTimeFrequencyFeatures(IterableDataset):
                 frames.shape[1:] + (frames.shape[0], )
             )
             self.processed_audios[sample_idx]['stft_filtered_speech'] = frames
+
+            stft_clean_speech = self.processed_audios[sample_idx]['stft_clean_speech']
+            stft_clean_speech_cpu = stft_clean_speech.cpu()
+            del stft_clean_speech
+            self.processed_audios[sample_idx]['stft_clean_speech'] = stft_clean_speech_cpu
+
+            stft_noisy_speech = self.processed_audios[sample_idx]['stft_noisy_speech']
+            stft_noisy_speech_cpu = stft_noisy_speech.cpu()
+            del stft_noisy_speech
+            self.processed_audios[sample_idx]['stft_noisy_speech'] = stft_noisy_speech_cpu
+
             return sample_idx
         elif len(stft_filtered_speech) < amount_samples:
             return None

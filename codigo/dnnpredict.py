@@ -7,9 +7,8 @@ import numpy as np
 
 from tensorboardX import SummaryWriter
 
+from codigo.runsettings import RunSettings
 from dnnmodelevaluator import ModelEvaluator
-import runsettings
-
 
 @click.command()
 @click.option('--model', required=False, help='Name of the model to be used to predict', type=str)
@@ -17,10 +16,11 @@ import runsettings
 @click.option('--input-dir', prompt='Dataset to be used while training', type=str)
 @click.option('--experiment-name', prompt='Experiment name', type=str)
 def predict(output_dir, input_dir, experiment_name, model=None):
-    print('Running on {}'.format(torch.device(runsettings.device)))
-    print('Running in mode {}'.format(runsettings.filter_type))
-    print('Running with features {}'.format(runsettings.features_type))
-    print('Running with optimizer {}'.format(runsettings.optimizer_type))
+    run_settings = RunSettings()
+    print('Running on {}'.format(torch.device(run_settings.device)))
+    print('Running in mode {}'.format(run_settings.filter_type))
+    print('Running with features {}'.format(run_settings.features_type))
+    print('Running with optimizer {}'.format(run_settings.optimizer_type))
 
     if model is None:
         models_path = os.path.join(os.getcwd(), 'trained-models')
@@ -42,7 +42,7 @@ def predict(output_dir, input_dir, experiment_name, model=None):
     dataset_path = input_dir
 
     print('Model {} loaded'.format(model_path))
-    runsettings.net.load_state_dict(torch.load(model_path))
+    run_settings.net.load_state_dict(torch.load(model_path))
 
     print('Output tensorboard events to {}'.format(event_logs_dir))
     writer = SummaryWriter(log_dir=event_logs_dir)
@@ -51,8 +51,8 @@ def predict(output_dir, input_dir, experiment_name, model=None):
     test_dataset_path = os.path.join(dataset_path, 'test.csv')
 
     tester = ModelEvaluator(
-        writer, dataset_path, test_dataset_path, 1, 'test', runsettings.test_on_n_samples,
-        runsettings.test_batch_size, runsettings.test_generate_audios, output_dir, False, None,
+        writer, dataset_path, test_dataset_path, 1, 'test', run_settings.test_on_n_samples,
+        run_settings.test_batch_size, run_settings.test_generate_audios, output_dir, False, None,
         push_metrics_every_x_batches=True
     )
     tester.evaluate(0)

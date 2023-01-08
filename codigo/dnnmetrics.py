@@ -1,8 +1,6 @@
-from statistics import mean
-
 import numpy as np
 
-import runsettings
+from runsettings import RunSettings
 from constants import AudioType
 from utils import np_mse, pesq, stoi
 
@@ -33,6 +31,8 @@ class MetricsEvaluator(object):
         self.generate_audios = generate_audios
         self.push_to_tensorboard = push_to_tensorboard
         self.compute_pesq_and_stoi = compute_pesq_and_stoi
+
+        self.run_settings = RunSettings()
 
     def restart_metrics(self):
         self.accumulative_mse_loss = []
@@ -73,19 +73,19 @@ class MetricsEvaluator(object):
             self.accumulative_stft_mse.append(stft_mse)
 
             if self.compute_pesq_and_stoi:
-                pesq_value = pesq(clean, filtered, runsettings.fs)
+                pesq_value = pesq(clean, filtered, self.run_settings.fs)
                 if pesq_value:
                     self.accumulative_pesq.append(pesq_value)
 
-                min_pesq_value = pesq(clean, noisy, runsettings.fs)
+                min_pesq_value = pesq(clean, noisy, self.run_settings.fs)
                 if min_pesq_value:
                     self.accumulative_min_pesq.append(min_pesq_value)
 
-                stoi_value = stoi(clean, filtered, runsettings.fs)
+                stoi_value = stoi(clean, filtered, self.run_settings.fs)
                 if stoi_value:
                     self.accumulative_stoi.append(stoi_value)
 
-                min_stoi_value = stoi(clean, noisy, runsettings.fs)
+                min_stoi_value = stoi(clean, noisy, self.run_settings.fs)
                 if min_stoi_value:
                     self.accumulative_min_stoi.append(min_stoi_value)
 

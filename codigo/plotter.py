@@ -14,10 +14,10 @@ from scipy.signal import convolve, stft
 from torch import sigmoid
 from torch.utils.data import DataLoader
 
-import runsettings
 from adaptivealgorithms import rls
 from adaptivefilterdatasethandler import AdaptiveFilteringDataset
 from audiolib import segmental_snr_mixer
+from codigo.runsettings import RunSettings
 from constants import AudioType
 from realtimednnfilterdatasethandler import RealTimeNoisySpeechDatasetWithTimeFrequencyFeatures
 from utils import pesq, remove_not_matched_snr_segments, stoi
@@ -31,16 +31,17 @@ def entry_point():
 @entry_point.command()
 @click.option('--input-dir', prompt='Dataset path', type=str)
 def af_plot_weights(input_dir):
+    run_settings = RunSettings()
     dataset_path = input_dir
 
     constant_filter = False
     test_dataset_path = os.path.join(dataset_path, 'test.csv')
     test_dataset = AdaptiveFilteringDataset(
-        dataset_path, test_dataset_path, runsettings.fs, runsettings.af_windows_time_size,
-        runsettings.overlap_percentage, randomize=False,
-        max_samples=runsettings.test_on_n_samples, constant_filter=constant_filter
+        dataset_path, test_dataset_path, run_settings.fs, run_settings.af_windows_time_size,
+        run_settings.overlap_percentage, randomize=False,
+        max_samples=run_settings.test_on_n_samples, constant_filter=constant_filter
     )
-    test_data_loader = DataLoader(test_dataset, batch_size=runsettings.af_batch_size)
+    test_data_loader = DataLoader(test_dataset, batch_size=run_settings.af_batch_size)
     test_data_iterator = iter(test_data_loader)
     plot_dim = 2, 2
     fig, axs = plt.subplots(*plot_dim, figsize=(20, 9), dpi=100, tight_layout=True)
@@ -59,7 +60,7 @@ def af_plot_weights(input_dir):
         correlated_noise_frame = sample_batched['correlated_noise'].numpy()[0]
 
         noise_estimation, filtered_speech_frame, weights_n, _, _ = rls(
-            correlated_noise_frame, noisy_frame, runsettings.filter_size, lmda=runsettings.forgetting_rate
+            correlated_noise_frame, noisy_frame, run_settings.filter_size, lmda=run_settings.forgetting_rate
         )
 
         audio_name = test_dataset.get_audio_data(sample_idx)['audio_name']
@@ -77,6 +78,7 @@ def af_plot_weights(input_dir):
 @entry_point.command()
 @click.option('--input-dir', prompt='Dataset path', type=str)
 def af_plot_signals(input_dir):
+    run_settings = RunSettings()
     dataset_path = input_dir
 
     sample_idx = 0
@@ -84,11 +86,11 @@ def af_plot_signals(input_dir):
     constant_filter = False
     test_dataset_path = os.path.join(dataset_path, 'test.csv')
     test_dataset = AdaptiveFilteringDataset(
-        dataset_path, test_dataset_path, runsettings.fs, runsettings.af_windows_time_size,
-        runsettings.overlap_percentage, randomize=False,
-        max_samples=runsettings.test_on_n_samples, constant_filter=constant_filter
+        dataset_path, test_dataset_path, run_settings.fs, run_settings.af_windows_time_size,
+        run_settings.overlap_percentage, randomize=False,
+        max_samples=run_settings.test_on_n_samples, constant_filter=constant_filter
     )
-    test_data_loader = DataLoader(test_dataset, batch_size=runsettings.af_batch_size)
+    test_data_loader = DataLoader(test_dataset, batch_size=run_settings.af_batch_size)
     test_data_iterator = iter(test_data_loader)
 
     test_dataset.forward_to_audio_sample_idx(sample_idx)
@@ -103,7 +105,7 @@ def af_plot_signals(input_dir):
     audio_name = test_dataset.get_audio_data(sample_idx)['audio_name']
 
     noise_estimation, filtered_speech_frame, weights_n, _, _ = rls(
-        correlated_noise_frame, noisy_frame, runsettings.filter_size, lmda=runsettings.forgetting_rate
+        correlated_noise_frame, noisy_frame, run_settings.filter_size, lmda=run_settings.forgetting_rate
     )
 
     fig, axs = plt.subplots(nrows=3, ncols=1, figsize=(20, 9), dpi=100, tight_layout=True)
@@ -154,6 +156,7 @@ def af_plot_signals(input_dir):
 @entry_point.command()
 @click.option('--input-dir', prompt='Dataset path', type=str)
 def plot_af_stationary_noise(input_dir):
+    run_settings = RunSettings()
     raw_data_set_path = os.path.join('.', '..', 'raw-dataset')
     noises_path = np.asarray(
         [file_path for file_path in glob.glob('{}/noise/typing/*.wav'.format(raw_data_set_path), recursive=True)]
@@ -184,7 +187,7 @@ def plot_af_stationary_noise(input_dir):
             correlated_noise = convolve(noise, correlation_filter, mode='same')
 
             noise_estimation, filtered, weights_n, _, _ = rls(
-                correlated_noise, noisy, runsettings.filter_size, lmda=runsettings.forgetting_rate
+                correlated_noise, noisy, run_settings.filter_size, lmda=run_settings.forgetting_rate
             )
             estimation_error = np.abs(filtered - clean) ** 2
             estimation_error_smoothed = exponential_moving_average_smoothing(estimation_error, 0.9995)
@@ -212,6 +215,7 @@ def plot_af_stationary_noise(input_dir):
 @entry_point.command()
 @click.option('--input-dir', prompt='Dataset path', type=str)
 def plot_af_frequency_response(input_dir):
+    run_settings = RunSettings()
     raw_data_set_path = os.path.join('.', '..', 'raw-dataset')
     noises_path = np.asarray(
         [file_path for file_path in glob.glob('{}/noise/typing/*.wav'.format(raw_data_set_path), recursive=True)]
@@ -233,7 +237,7 @@ def plot_af_frequency_response(input_dir):
     correlated_noise_minus_five = convolve(noise_minus_five, correlation_filter, mode='same')
 
     noise_estimation_minus_five, filtered_minus_five, _, _, _ = rls(
-        correlated_noise_minus_five, noisy_minus_five, runsettings.filter_size, lmda=runsettings.forgetting_rate
+        correlated_noise_minus_five, noisy_minus_five, run_settings.filter_size, lmda=run_settings.forgetting_rate
     )
 
     # 20 dB
@@ -241,7 +245,7 @@ def plot_af_frequency_response(input_dir):
     correlated_noise_twenty = convolve(noise_twenty, correlation_filter, mode='same')
 
     noise_estimation_twenty, filtered_twenty, _, _, _ = rls(
-        correlated_noise_twenty, noisy_twenty, runsettings.filter_size, lmda=runsettings.forgetting_rate
+        correlated_noise_twenty, noisy_twenty, run_settings.filter_size, lmda=run_settings.forgetting_rate
     )
 
     # Plot
@@ -269,25 +273,26 @@ def plot_af_frequency_response(input_dir):
 @click.option('--input-dir', prompt='Dataset path', type=str)
 @click.option('--model', required=False, help='Name of the model to be used to predict', type=str)
 def dnn_plot_example_stft_features(input_dir, model):
+    run_settings = RunSettings()
     dataset_path = input_dir
 
     test_dataset_path = os.path.join(dataset_path, 'test.csv')
 
     model_path = os.path.join(os.getcwd(), 'trained-models', model)
-    runsettings.net.load_state_dict(torch.load(model_path))
+    run_settings.net.load_state_dict(torch.load(model_path))
 
     test_dataset = RealTimeNoisySpeechDatasetWithTimeFrequencyFeatures(
-        dataset_path, test_dataset_path, runsettings.fs, runsettings.windows_time_size,
-        runsettings.overlap_percentage, runsettings.fft_points, runsettings.time_feature_size,
-        randomize=runsettings.test_randomize_data, max_samples=runsettings.test_on_n_samples,
-        normalize=runsettings.normalize_data, predict_on_time_windows=runsettings.predict_on_time_windows
+        dataset_path, test_dataset_path, run_settings.fs, run_settings.windows_time_size,
+        run_settings.overlap_percentage, run_settings.fft_points, run_settings.time_feature_size,
+        randomize=run_settings.test_randomize_data, max_samples=run_settings.test_on_n_samples,
+        normalize=run_settings.normalize_data, predict_on_time_windows=run_settings.predict_on_time_windows
     )
 
-    test_data_loader = DataLoader(test_dataset, batch_size=runsettings.test_batch_size)
+    test_data_loader = DataLoader(test_dataset, batch_size=run_settings.test_batch_size)
     test_data_iterator = iter(test_data_loader)
 
-    runsettings.net.to(runsettings.device)
-    runsettings.net.eval()
+    run_settings.net.to(run_settings.device)
+    run_settings.net.eval()
 
     with torch.no_grad():
         while True:
@@ -296,10 +301,10 @@ def dnn_plot_example_stft_features(input_dir, model):
             noisy_speeches = sample_batched['noisy_speech']
             samples_idx = sample_batched['sample_idx']
 
-            noisy_speeches = noisy_speeches.to(runsettings.device)
+            noisy_speeches = noisy_speeches.to(run_settings.device)
 
-            outputs, _ = runsettings.net(noisy_speeches)
-            if runsettings.normalize_data:
+            outputs, _ = run_settings.net(noisy_speeches)
+            if run_settings.normalize_data:
                 outputs = sigmoid(outputs)
 
             accumulated_samples_idx = test_dataset.accumulate_filtered_frames(outputs.cpu(), samples_idx)
@@ -340,6 +345,7 @@ def dnn_plot_example_stft_features(input_dir, model):
 @entry_point.command()
 @click.option('--input-dir', prompt='Dataset path', type=str)
 def plot_dnn_stationary_noise(input_dir):
+    run_settings = RunSettings()
     dataset_path = input_dir
     test_dataset_path = os.path.join(dataset_path, 'test.csv')
     snrs = [-5.0, 0.0, 5.0, 10.0, 15.0, 20.0]
@@ -371,7 +377,7 @@ def plot_dnn_stationary_noise(input_dir):
             noisy, _ = librosa.load(noisy_path, sr=None)
 
             clean, noisy, noise, filtered = remove_not_matched_snr_segments(
-                clean, noisy, noise, filtered, int(snr), runsettings.fs
+                clean, noisy, noise, filtered, int(snr), run_settings.fs
             )
             if clean.size == 0:
                 continue
@@ -406,6 +412,7 @@ def plot_dnn_stationary_noise(input_dir):
 @entry_point.command()
 @click.option('--input-dir', prompt='Dataset path', type=str)
 def plot_pesq_stoi(input_dir):
+    run_settings = RunSettings()
     dataset_path = input_dir
     test_dataset_path = os.path.join(dataset_path, 'test.csv')
     samples = pd.read_csv(test_dataset_path)
@@ -496,7 +503,7 @@ def plot_pesq_stoi(input_dir):
 
         if noise is not None:
             clean, noisy, noise, filtered = remove_not_matched_snr_segments(
-                clean, noisy, noise, filtered, int(snr), runsettings.fs
+                clean, noisy, noise, filtered, int(snr), run_settings.fs
             )
 
         pesq_value = pesq(clean, noisy, sr)

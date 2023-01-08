@@ -4,17 +4,24 @@ from torch import nn
 
 class ConvDenoisingRealTimeNet(nn.Module):
 
-    def __init__(self, time_feature_size, predict_on_time_windows, store_intermediate_outputs=None):
+    def __init__(self, time_feature_size, freq_feature_size, predict_on_time_windows, store_intermediate_outputs=None):
         super().__init__()
-
         self.store_intermediate_outputs = store_intermediate_outputs
+        self.freq_feature_size = freq_feature_size
+        self.time_feature_size = time_feature_size
+        self.predict_on_time_windows = predict_on_time_windows
 
-        down = [(2 * 512, 256), (2 * 256, 128), (2 * 128, 64), (2 * 64, 32), (2 * 32, 16)]
-        up = [(16, 32), (32, 64), (64, 128), (128, 256), (256, 512)]
-        middle_block = 512
-        first_last_layer = 16
+        # up = [(16, 32), (32, 64), (64, 128), (128, 256), (256, 512)]
+        # down = [(2 * 512, 256), (2 * 256, 128), (2 * 128, 64), (2 * 64, 32), (2 * 32, 16)]
+        # middle_layer_size = 512
+        # first_layer_size = 16
 
-        self.input_layer = self.build_input_layer(1, first_last_layer)
+        up = [(16, 32), (32, 128), (128, 256)]
+        down = [(2 * 256, 128), (2 * 128, 32), (2 * 32, 16)]
+        middle_layer_size = 256
+        first_layer_size = 16
+
+        self.input_layer = self.build_input_layer(1, first_layer_size)
         encoder_layers = [
             self.build_block(in_c, out_c) for in_c, out_c
             in up
@@ -24,7 +31,7 @@ class ConvDenoisingRealTimeNet(nn.Module):
             [nn.MaxPool2d(2) for i in range(0, len(self.encoder))]
         )
 
-        self.middle_layer = self.build_block(middle_block, middle_block)
+        self.middle_layer = self.build_block(middle_layer_size, middle_layer_size)
 
         decoder_layers = [
             self.build_block(in_c, out_c) for in_c, out_c
@@ -35,12 +42,9 @@ class ConvDenoisingRealTimeNet(nn.Module):
             [nn.UpsamplingBilinear2d(scale_factor=2) for i in range(0, len(self.encoder))]
         )
 
-        self.output_layer = self.build_output_layer(first_last_layer, 1)
+        self.output_layer = self.build_output_layer(first_layer_size, 1)
 
         self.register_buffer("current_batch_number", torch.tensor(0))
-
-        self.time_feature_size = time_feature_size
-        self.predict_on_time_windows = predict_on_time_windows
 
     def forward(self, x):
         intermediate_outputs = []

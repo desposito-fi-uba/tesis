@@ -14,8 +14,8 @@ import torch
 from google.cloud import storage
 from tensorboardX import SummaryWriter
 
+from runsettings import RunSettings
 from dnnmodelevaluator import ModelEvaluator
-import runsettings
 
 
 @click.command()
@@ -30,8 +30,10 @@ import runsettings
 def train(
         epochs, output_dir, input_dir, experiment_name, resume_with_model, use_gpu, resume_from_model, overload_settings
 ):
+    run_settings = RunSettings()
+    
     if use_gpu is not None and not use_gpu:
-        runsettings.device = torch.device("cpu")
+        run_settings.device = torch.device("cpu")
 
     if resume_from_model is None:
         resume_from_model = True
@@ -53,12 +55,12 @@ def train(
         with open(overloaded_settings_path, 'r') as f:
             overloaded_settings = json.load(f)
             for config_key, config_value in overloaded_settings.items():
-                setattr(runsettings, config_key, config_value)
+                setattr(run_settings, config_key, config_value)
 
-    print('Running on {}'.format(torch.device(runsettings.device)))
-    print('Running in mode {}'.format(runsettings.filter_type))
-    print('Running with features {}'.format(runsettings.features_type))
-    print('Running with optimizer {}'.format(runsettings.optimizer_type))
+    print('Running on {}'.format(torch.device(run_settings.device)))
+    print('Running in mode {}'.format(run_settings.filter_type))
+    print('Running with features {}'.format(run_settings.features_type))
+    print('Running with optimizer {}'.format(run_settings.optimizer_type))
 
     experiment_id = experiment_name
     logs_path = 'logs'
@@ -125,7 +127,7 @@ def train(
                 chosen_blob.download_to_filename(temp_file_path)
 
                 print('Model {} loaded'.format(file_name))
-                runsettings.net.load_state_dict(torch.load(temp_file_path, map_location=runsettings.device))
+                run_settings.net.load_state_dict(torch.load(temp_file_path, map_location=run_settings.device))
     else:
         if resume_from_model:
             if not resume_with_model:
@@ -142,7 +144,7 @@ def train(
 
             if latest_created_model:
                 print('Model {} loaded'.format(latest_created_model))
-                runsettings.net.load_state_dict(torch.load(latest_created_model))
+                run_settings.net.load_state_dict(torch.load(latest_created_model))
 
     print('Preparing to train')
     train_csv_path = os.path.join(dataset_path, 'train.csv')
@@ -156,25 +158,31 @@ def train(
     ) for i in range(10)]
     models_names_iterator = itertools.cycle(models_names)
 
-    runsettings.net.to(runsettings.device)
+    run_settings.net.to(run_settings.device)
 
     print('Starting training with {} epochs'.format(epochs))
-    batches_counter = runsettings.net.current_batch_number.item()
+    batches_counter = run_settings.net.current_batch_number.item()
 
     print('Output tensorboard events to {}. Resuming from step {}'.format(event_logs_dir, batches_counter))
     writer = SummaryWriter(log_dir=event_logs_dir, purge_step=batches_counter)
 
-    tester = ModelEvaluator(
-        writer, dataset_path, test_csv_path, 1, 'test', runsettings.test_on_n_samples,
-        runsettings.test_batch_size, runsettings.test_generate_audios, output_dir, False, storage_client,
-        push_metrics_every_x_batches=False, compute_pesq_and_stoi=runsettings.test_compute_stoi_and_pesq
-    )
+    tester = None
+    if run_settings.test_while_training:
+        tester = ModelEvaluator(
+            writer, dataset_path, test_csv_path, 1, 'test', run_settings.test_on_n_samples,
+            run_settings.test_batch_size, run_settings.test_generate_audios, output_dir, False, storage_client,
+            run_settings.show_metrics_every_n_batches,
+            push_metrics_every_x_batches=False, compute_pesq_and_stoi=run_settings.test_compute_stoi_and_pesq
+        )
 
     trainer = ModelEvaluator(
-        writer, dataset_path, train_csv_path, epochs, 'train', runsettings.train_on_n_samples,
-        runsettings.train_batch_size, runsettings.train_generate_audios, output_dir, True, storage_client,
+        writer, dataset_path, train_csv_path, epochs, 'train', run_settings.train_on_n_samples,
+        run_settings.train_batch_size, run_settings.train_generate_audios, output_dir, True, storage_client,
+        run_settings.show_metrics_every_n_batches,
         testing_model_evaluator=tester, models_names_iterator=models_names_iterator,
-        push_metrics_every_x_batches=True, compute_pesq_and_stoi=runsettings.train_compute_stoi_and_pesq
+        push_metrics_every_x_batches=True, compute_pesq_and_stoi=run_settings.train_compute_stoi_and_pesq,
+        test_model_every_x_batches=run_settings.test_while_training_every_n_batches,
+        save_model_every_x_batches=run_settings.save_model_every_n_batches,
     )
     trainer.evaluate(batches_counter)
 
