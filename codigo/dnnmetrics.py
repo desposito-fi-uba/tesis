@@ -8,7 +8,7 @@ from utils import np_mse, pesq, stoi
 class MetricsEvaluator(object):
     def __init__(
             self, tensorboard_writer, dataset, mode, filter_type, features_type, fs, generate_audios=True,
-            push_to_tensorboard=True, compute_pesq_and_stoi=False
+            push_to_tensorboard=True, compute_pesq_and_stoi=False, verbose_print=False
     ):
         self.accumulative_mse_loss = []
         self.accumulative_audio_max_mse = []
@@ -33,6 +33,7 @@ class MetricsEvaluator(object):
         self.compute_pesq_and_stoi = compute_pesq_and_stoi
 
         self.run_settings = RunSettings()
+        self.verbose_print = verbose_print
 
     def restart_metrics(self):
         self.accumulative_mse_loss = []
@@ -92,71 +93,110 @@ class MetricsEvaluator(object):
         self.accumulative_samples_idx.extend(samples_idx)
 
     def push_metrics(self, batches_counter):
-        mse = np.asarray(self.accumulative_mse_loss).mean()
+        accumulative_mse_loss = np.asarray(self.accumulative_mse_loss)
+        mse = accumulative_mse_loss.mean()
+
         if self.accumulative_audio_mse and self.accumulative_audio_max_mse:
-            audio_mse = np.asarray(self.accumulative_audio_mse).mean()
-            audio_max_mse = np.asarray(self.accumulative_audio_max_mse).mean()
+            accumulative_audio_mse = np.asarray(self.accumulative_audio_mse)
+            audio_mse_mean = accumulative_audio_mse.mean()
+
+            accumulative_audio_max_mse = np.asarray(self.accumulative_audio_max_mse)
+            audio_max_mse_mean = accumulative_audio_max_mse.mean()
         else:
-            audio_mse = np.nan
-            audio_max_mse = np.nan
+            accumulative_audio_mse = np.nan
+            audio_mse_mean = np.nan
+
+            accumulative_audio_max_mse = np.nan
+            audio_max_mse_mean = np.nan
 
         if self.accumulative_stft_mse and self.accumulative_stft_max_mse:
-            stft_mse = np.asarray(self.accumulative_stft_mse).mean()
-            stft_max_mse = np.asarray(self.accumulative_stft_max_mse).mean()
+            accumulative_stft_mse = np.asarray(self.accumulative_stft_mse)
+            stft_mse_mean = accumulative_stft_mse.mean()
+
+            accumulative_stft_max_mse = np.asarray(self.accumulative_stft_max_mse)
+            stft_max_mse_mean = accumulative_stft_max_mse.mean()
         else:
-            stft_mse = np.nan
-            stft_max_mse = np.nan
+            accumulative_stft_mse = np.nan
+            stft_mse_mean = np.nan
+
+            accumulative_stft_max_mse = np.nan
+            stft_max_mse_mean = np.nan
 
         if self.accumulative_pesq and self.accumulative_min_pesq:
-            pesq_value = np.asarray(self.accumulative_pesq).mean()
-            min_pesq_value = np.asarray(self.accumulative_min_pesq).mean()
+            accumulative_pesq = np.asarray(self.accumulative_pesq)
+            pesq_value_mean = accumulative_pesq.mean()
+
+            accumulative_min_pesq = np.asarray(self.accumulative_min_pesq)
+            min_pesq_value_mean = accumulative_min_pesq.mean()
         else:
-            pesq_value = np.nan
-            min_pesq_value = np.nan
+            accumulative_pesq = np.nan
+            pesq_value_mean = np.nan
+
+            accumulative_min_pesq = np.nan
+            min_pesq_value_mean = np.nan
 
         if self.accumulative_stoi and self.accumulative_min_stoi:
-            stoi_value = np.asarray(self.accumulative_stoi).mean()
-            min_stoi_value = np.asarray(self.accumulative_min_stoi).mean()
+            accumulative_stoi = np.asarray(self.accumulative_stoi)
+            stoi_value_mean = accumulative_stoi.mean()
+
+            accumulative_min_stoi = np.asarray(self.accumulative_min_stoi)
+            min_stoi_value_mean = accumulative_min_stoi.mean()
         else:
-            stoi_value = np.nan
-            min_stoi_value = np.nan
+            accumulative_stoi = np.nan
+            stoi_value_mean = np.nan
+
+            accumulative_min_stoi = np.nan
+            min_stoi_value_mean = np.nan
 
         print(
-            '[{}] {}, '
-            'mse: {:.5e}, '
-            'audio_max_mse: {:.5e} '
-            'audio_mse: {:.5e} '
-            'stft_max_mse: {:.5e} '
-            'stft_mse: {:.5e}'.format(
-                batches_counter, self.mode, mse, audio_max_mse, audio_mse, stft_max_mse, stft_mse
+            '[{}] {}\n'
+            '\t*mse: {:.5e}, min: {:.5e}, max: {:5e}, median: {:5e}\n'
+            '\t*audio_max_mse: {:.5e}, min: {:.5e}, max: {:5e}, median: {:5e}\n'
+            '\t*audio_mse: {:.5e}, min: {:.5e}, max: {:5e}, median: {:5e}\n'
+            '\t*stft_max_mse: {:.5e}, min: {:.5e}, max: {:5e}, median: {:5e}\n'
+            '\t*stft_mse: {:.5e}, min: {:.5e}, max: {:5e}, median: {:5e}\n'
+            '\t*min_pesq: {:.5e}, min: {:.5e}, max: {:5e}, median: {:5e}\n'
+            '\t*pesq {:.5e}, min: {:.5e}, max: {:5e}, median: {:5e}\n'
+            '\t*min_stoi: {:.5e}, min: {:.5e}, max: {:5e}, median: {:5e}\n'
+            '\t*stoi: {:.5e}, min: {:.5e}, max: {:5e}, median: {:5e}\n'.format(
+                batches_counter, self.mode,
+                mse, np.min(accumulative_mse_loss), np.max(accumulative_mse_loss), np.median(accumulative_mse_loss),
+                audio_max_mse_mean, np.min(accumulative_audio_max_mse), np.max(accumulative_audio_max_mse), np.median(accumulative_audio_max_mse),
+                audio_mse_mean, np.min(accumulative_audio_mse), np.max(accumulative_audio_mse), np.median(accumulative_audio_mse),
+                stft_max_mse_mean, np.min(accumulative_stft_max_mse), np.max(accumulative_stft_max_mse), np.median(accumulative_stft_max_mse),
+                stft_mse_mean, np.min(accumulative_stft_mse), np.max(accumulative_stft_mse), np.median(accumulative_stft_mse),
+                min_pesq_value_mean, np.min(accumulative_min_pesq), np.max(accumulative_min_pesq), np.median(accumulative_min_pesq),
+                pesq_value_mean, np.min(accumulative_pesq), np.max(accumulative_pesq), np.median(accumulative_pesq),
+                min_stoi_value_mean, np.min(accumulative_min_stoi), np.max(accumulative_min_stoi), np.median(accumulative_min_stoi),
+                stoi_value_mean, np.min(accumulative_stoi), np.max(accumulative_stoi), np.median(accumulative_stoi),
             )
         )
 
         if self.push_to_tensorboard:
             self.writer.add_scalar('MSE/{}'.format(self.mode), mse, batches_counter)
 
-            if audio_max_mse is not np.nan and audio_mse is not np.nan:
+            if audio_max_mse_mean is not np.nan and audio_mse_mean is not np.nan:
                 self.writer.add_scalars('Audio MSE/{}'.format(self.mode), {
-                    'max': audio_max_mse,
-                    'actual': audio_mse
+                    'max': audio_max_mse_mean,
+                    'actual': audio_mse_mean
                 }, batches_counter)
 
-            if stft_max_mse is not np.nan and stft_mse is not np.nan:
+            if stft_max_mse_mean is not np.nan and stft_mse_mean is not np.nan:
                 self.writer.add_scalars('STFT MSE/{}'.format(self.mode), {
-                    'max': stft_max_mse,
-                    'actual': stft_mse
+                    'max': stft_max_mse_mean,
+                    'actual': stft_mse_mean
                 }, batches_counter)
 
-            if pesq_value is not np.nan and min_pesq_value is not np.nan:
+            if pesq_value_mean is not np.nan and min_pesq_value_mean is not np.nan:
                 self.writer.add_scalars('PESQ/{}'.format(self.mode), {
-                    'min': min_pesq_value,
-                    'actual': pesq_value
+                    'min': min_pesq_value_mean,
+                    'actual': pesq_value_mean
                 }, batches_counter)
 
-            if stoi_value is not np.nan and min_stoi_value is not np.nan:
+            if stoi_value_mean is not np.nan and min_stoi_value_mean is not np.nan:
                 self.writer.add_scalars('STOI/{}'.format(self.mode), {
-                    'min': min_stoi_value,
-                    'actual': stoi_value
+                    'min': min_stoi_value_mean,
+                    'actual': stoi_value_mean
                 }, batches_counter)
 
             self.writer.flush()
