@@ -334,7 +334,7 @@ class RealTimeNoisySpeechDatasetWithTimeFrequencyFeatures(IterableDataset):
         audio = self.get_audio(sample_idx, AudioType.FILTERED)
         audio_name = self.get_audio_data(sample_idx)['audio_name']
         audio_directory = os.path.join(
-            self.base_path, '..', 'filtered', 'dnn'
+            self.base_path, 'filtered', 'dnn'
         )
         Path(audio_directory).mkdir(parents=True, exist_ok=True)
 

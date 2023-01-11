@@ -17,7 +17,7 @@ from torch.utils.data import DataLoader
 from adaptivealgorithms import rls
 from adaptivefilterdatasethandler import AdaptiveFilteringDataset
 from audiolib import segmental_snr_mixer
-from codigo.runsettings import RunSettings
+from runsettings import RunSettings
 from constants import AudioType
 from realtimednnfilterdatasethandler import RealTimeNoisySpeechDatasetWithTimeFrequencyFeatures
 from utils import pesq, remove_not_matched_snr_segments, stoi
@@ -418,7 +418,7 @@ def plot_pesq_stoi(input_dir):
     samples = pd.read_csv(test_dataset_path)
     num_samples = len(samples)
 
-    snrs_used = ['-5', '0', '5', '10', '15', '20', 'inf']
+    snrs_used = ['-5', '0', '5', '10', '15', '20', '40']
 
     noisy_pesq = {snr: [] for snr in snrs_used}
     noisy_stoi = {snr: [] for snr in snrs_used}
@@ -489,8 +489,9 @@ def plot_pesq_stoi(input_dir):
         clean, sr = librosa.load(clean_path, sr=None)
 
         audio_name = clean_path.replace('-clean.wav', '.wav').replace(dataset_path, '')[1:]
+        audio_name = os.path.basename(audio_name)
 
-        filtered_path = os.path.join(dataset_path, '..', 'filtered', 'dnn', audio_name)
+        filtered_path = os.path.join(dataset_path, 'filtered', 'dnn', audio_name)
         filtered, _ = librosa.load(filtered_path, sr=None)
 
         noise = None

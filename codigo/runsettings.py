@@ -49,7 +49,7 @@ class RunSettings(metaclass=Singleton):
 
         self.predict_on_time_windows = 60
 
-        self.train_batch_size = 400
+        self.train_batch_size = 32
         self.train_on_n_samples = None
         self.train_generate_audios = False
         self.train_compute_stoi_and_pesq = False
@@ -59,10 +59,10 @@ class RunSettings(metaclass=Singleton):
         self.show_metrics_every_n_batches = 50
         self.save_model_every_n_batches = 1000
 
-        self.test_batch_size = 400
+        self.test_batch_size = 128
         self.test_randomize_data = True
         self.test_on_n_samples = 500
-        self.test_generate_audios = False
+        self.test_generate_audios = True
         self.test_compute_stoi_and_pesq = True
         self.test_save_filtered_audios = False
 

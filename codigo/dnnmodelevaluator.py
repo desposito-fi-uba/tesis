@@ -14,11 +14,15 @@ class ModelEvaluator(object):
     def __init__(
             self, tensorboard_writer, dataset_path, csv_path, num_epochs, mode, dataset_max_samples,
             batch_size, generate_audios, output_dir, is_train, storage_client, show_metrics_every_n_batches,
-            testing_model_evaluator=None, models_names_iterator=None, push_metrics_every_x_batches=None,
+            testing_model_evaluator=None, models_names_iterator=None, push_metrics_to_tensor_board=None,
+            push_metrics_every_x_batches=None,
             compute_pesq_and_stoi=False, test_model_every_x_batches=None, save_model_every_x_batches=None,
     ):
         self.push_metrics_every_x_batches = (
             push_metrics_every_x_batches if push_metrics_every_x_batches is not None else True
+        )
+        self.push_metrics_to_tensor_board = (
+            push_metrics_to_tensor_board if push_metrics_to_tensor_board is not None else True
         )
         self.mode = mode
         self.csv_path = csv_path
@@ -75,6 +79,7 @@ class ModelEvaluator(object):
             f'\t* Show metrics every x batches: {self.show_metrics_every_n_batches}\n'
             f'\t* Must push metrics every x batches: {self.push_metrics_every_x_batches}\n'
             f'\t* Compute pesq and stoi: {self.compute_pesq_and_stoi}\n'
+            f'\t* Push metrics to tensorboard: {self.push_metrics_to_tensor_board}\n'
         )
 
     def init_dataset(self):
@@ -91,8 +96,8 @@ class ModelEvaluator(object):
         self.metric_evaluator = MetricsEvaluator(
             self.tensorboard_writer, self.dataset, self.mode, self.run_settings.filter_type,
             self.run_settings.features_type,
-            self.run_settings.fs, generate_audios=self.generate_audios, push_to_tensorboard=True,
-            compute_pesq_and_stoi=self.compute_pesq_and_stoi
+            self.run_settings.fs, generate_audios=self.generate_audios,
+            push_to_tensorboard=self.push_metrics_to_tensor_board, compute_pesq_and_stoi=self.compute_pesq_and_stoi
         )
 
     def evaluate(self, batches_counter):

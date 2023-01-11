@@ -130,5 +130,5 @@ tensorboard --logdir=./trained-models/logs
 ## Obtener métricas PESQ y STOI
 
 ```
-python -m plotter plot-pesq-stoi --input-dir=./dataset/audios_test
+python -m plotter plot-pesq-stoi --input-dir=./dataset
 ```
