@@ -8,7 +8,7 @@ trainingInput:
     containerCommand: [
         "/bin/bash",
         "-c",
-        "python -u -m dnntrain --epochs=10 --input-dir=gs://desposito-noisefilter/dataset.tar.gz --output-dir=gs://desposito-noisefilter --experiment-name=dnn-train-time-decay1e-3-lr1e-5-w60-batch500-3layersnet --overload-settings=gs://desposito-noisefilter/overload_settings.json"
+        "python -u -m dnntrain --epochs=10 --input-dir=gs://desposito-noisefilter/dataset.tar.gz --output-dir=gs://desposito-noisefilter --experiment-name=dnn-train-time-decay1e-3-lr1e-4-w60-batch500-3layersnet --overload-settings=gs://desposito-noisefilter/overload_settings.json"
     ]
     "diskConfig":
       "bootDiskSizeGb": 200

@@ -134,7 +134,7 @@ class AdaptiveFilteringDataset(IterableDataset):
                 correlation_filter = np.random.random((correlation_filter_length,))
                 correlated_noise[index, :] = convolve(noise[index, :], correlation_filter, mode='same')
 
-                cross_talk_percentage = random.randint(0, 2)
+                cross_talk_percentage = random.randint(0, 4)
                 clean_frame = clean[index * noise_windows_size:(index + 1) * noise_windows_size]
                 clean_frame = np.pad(
                     clean_frame, [(0, noise_windows_size - len(clean_frame))], constant_values=0
@@ -159,7 +159,7 @@ class AdaptiveFilteringDataset(IterableDataset):
         audio = self.get_audio(sample_idx, AudioType.FILTERED)
         audio_name = self.get_audio_data(sample_idx)['audio_name']
         audio_path = os.path.join(
-            self.base_path, '..', 'filtered', 'af', f'{audio_name}.wav'
+            self.base_path, 'filtered', 'af', f'{audio_name}.wav'
         )
         wavfile.write(audio_path, self.fs, audio)
 
@@ -188,7 +188,3 @@ class AdaptiveFilteringDataset(IterableDataset):
             return None
 
         return self.processed_audios[sample_idx][key]
-
-    def forward_to_audio_sample_idx(self, sample_idx):
-        self.sample_idx = sample_idx
-

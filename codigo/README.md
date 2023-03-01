@@ -7,6 +7,25 @@
     * `python -m datasets generate --env=test`
     * `python -m datasets generate --env=train`
 
+## Generación de base de datos con un solo tipo de ruido por audio
+
+ * `python -m datasets generate --env=test --use-one-noise-type-per-audio=1 --output-dir=dataset_noise_type`
+
+## Niveles base de PESQ y STOI
+
+1. Generar los valores con: `python -m datasets compute-pesq-stoi-histogram  --input-dir=./dataset`
+2. Graficar con: `python -m datasets plot-pesq-stoi-histogram   --input-dir=./dataset`
+
+## Niveles base de PESQ y STOI con tipo de ruido
+
+1. Generar los valores con: `python -m datasets compute-pesq-stoi-histogram --input-dir=./dataset_with_noise_type`
+2. Graficar con: `python -m datasets plot-pesq-stoi-histogram --input-dir=./dataset_with_noise_type`
+
+## Estadísticas de los conjuntos
+
+1. Conjunto de entrenamiento `python -m datasets statistics --env=train`
+2. Conjunto de pruebas `python -m datasets statistics --env=test`
+
 
 ## Entrenar red localmente
 
@@ -127,8 +146,68 @@ python -m dnnpredict --input-dir=./dataset --output-dir=./trained-models --exper
 tensorboard --logdir=./trained-models/logs
 ```
 
-## Obtener métricas PESQ y STOI
+## Probar el modelo de dnn contra la db que contiene tipos de ruidos
 
 ```
-python -m plotter plot-pesq-stoi --input-dir=./dataset
+python -m dnnpredict --input-dir=./dataset_with_noise_type --output-dir=./trained-models --experiment-name=dnn-test-noise-type
+```
+
+## Probar el filtro adaptativo
+
+```
+python -m afpredict --input-dir=./dataset
+```
+
+## Probar el filtro adaptativo contra la db que contiene tipos de ruidos
+
+```
+python -m afpredict --input-dir=./dataset_with_noise_type
+```
+
+## Obtener métricas PESQ y STOI para filtro neuronal
+
+```
+python -m plotter plot-pesq-stoi --input-dir=./dataset  --filter-type=dnn
+```
+
+## Obtener métricas PESQ y STOI por snr y tipos de ruido para filtro neuronal
+
+```
+python -m plotter plot-pesq-stoi --input-dir=./dataset_with_noise_type --filter-type=dnn
+```
+
+## Obtener métricas PESQ y STOI para filtro adaptativo
+
+```
+python -m plotter plot-pesq-stoi --input-dir=./dataset  --filter-type=af
+```
+
+## Obtener métricas PESQ y STOI por snr y tipos de ruido para filtro adaptativo
+
+```
+python -m plotter plot-pesq-stoi --input-dir=./dataset_with_noise_type  --filter-type=af
+```
+
+## Obtener métricas de entrenamiento del filtro neuronal
+
+```
+python -m analyzelogs analyze-train-data --output-dir=./trained-models/logs --experiment-names="dnn-train-time-decay1e-4-lr1e-3-w60-batch400-3layersnet, dnn-train-time-decay1e-3-lr1e-4-w60-batch500-3layersnet"
+```
+
+## Obtener nivel de ruido y ecm para el filtro neuronal
+
+```
+python -m plotter plot-ecm-and-noise-level --input-dir=./dataset  --filter-type=dnn
+```
+
+## Obtener nivel de ruido y ecm para el filtro adaptativo
+
+```
+python -m plotter plot-ecm-and-noise-level --input-dir=./dataset  --filter-type=af
+```
+
+## Comparar pesq y stoi entre filtro adaptativo y filtro neuronal
+
+```
+python -m plotter compare-pesq-stoi-results
 ```

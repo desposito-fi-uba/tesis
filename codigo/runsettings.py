@@ -62,7 +62,7 @@ class RunSettings(metaclass=Singleton):
         self.test_batch_size = 128
         self.test_randomize_data = True
         self.test_on_n_samples = 500
-        self.test_generate_audios = True
+        self.test_generate_audios = False
         self.test_compute_stoi_and_pesq = True
         self.test_save_filtered_audios = False
 

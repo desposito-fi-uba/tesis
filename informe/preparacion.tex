@@ -3,34 +3,28 @@
 
 Para poder entrenar, comparar y evaluar los algoritmos de supresión de ruido es necesario contar con una base de datos de señales de habla y otra de ruidos. Contando con ambas bases es posible generar una base de datos de señales de habla ruidosa que se utilizarán como la señal de entrada a los filtros.
 
-A la salida de los filtros se obtendrá una señal de habla procesada o filtrada, la cual se comparará con la señal de habla sin ruido utilizando las métricas descritas en la sección \ref{sec:metrics}.
+La base de datos utilizada fue la descrita en el trabajo \emph{A scalable noisy speech dataset and online subjective test framework} \cite{a_scalable_noisy_speech_dataset_and_online_subjective_test_framework}.
 
-\subsection{Señales de habla}
+\subsection{Señales de entrenamiento y de pruebas}
 
-Las señales de habla sin ruido fueron tomadas de \cite{a_scalable_noisy_speech_dataset_and_online_subjective_test_framework}, las cuales a su vez se basan en la base de datos creada en la Universidad de Edimburgo \cite{the_voice_bank_corpus}. 
+La base de datos se encuentra dividida dos conjuntos disjuntos:
 
-La base de datos consiste en más de 20.000 oraciones leídas en voz alta por 56 oradores, 28 masculinos y 28 femeninos. Las oraciones tienen una duración media de aproximadamente 2.6 segundos y se encuentran muestreadas a 16 KHz. Las oraciones consisten, en su mayoría, en extractos del diario Scottish Herald.
+\begin{itemize}
+	\item Conjunto de entrenamiento: El filtro basado en redes neuronales depende de un conjunto de entrenamiento que se encarga de optimizar los parámetros de la red de tal manera que el error sea el menor posible. El filtro adaptativo no requiere de un conjunto de entrenamiento ya que sus parámetros son optimizados en tiempo real.
+	\item Conjunto de prueba: Para evaluar cada filtro de manera objetiva, se utiliza el conjunto de pruebas.
+\end{itemize}
+
+\subsection{Señales de habla sin ruido}
+
+La base de señales de habla sin ruido esta dividida en los conjuntos de entrenamiento y de prueba. El conjunto de entrenamiento consiste en más de 20.000 oraciones leídas en voz alta por 56 oradores, 28 masculinos y 28 femeninos. Las oraciones tienen una duración media de aproximadamente 3 segundos y se encuentran muestreadas a 16 kHz. Las oraciones consisten en extractos del diario \emph{Scottish Herald}.
+
+El conjunto de pruebas esta formado por mas de 1.000 oraciones leídas por 20 oradores femeninos y masculinos. Las oraciones tienen una duración media de aproximadamente 12 segundos y se encuentran muestreadas a 16 KHz. Las oraciones pertenecen a la base descrita en el trabajo \emph{A Pitch Tracking Corpus with Evaluation on Multipitch Tracking Scenario} \cite{a_pitch_tracking_corpus_with_evaluation_on_multipitch_tracking_scenario}.
 
 \subsection{Señales de ruido}
 
-Como vimos en \ref{sec:objetivos}, el presente trabajo se limita a estudiar el desempeño de los filtros en señales de habla corrompidas con cuatro tipos de  ruidos presentes usualmente en videoconferencias:
+La base de señales de ruido, también esta dividida en los conjuntos de entrenamiento y de prueba. Los ruidos fueron seleccionados de la base descrita en el trabajo \emph{DEMAND: a collection of multi-channel recordings of acoustic noise in diverse environments} \cite{demand_a_collection_of_multi_channel_recordings_of_acoustic_noise_in_diverse_environments}, y de \emph{freesound.org}.
 
-\begin{itemize}
-	\item Tipeo: Ruido generado al escribir en un teclado.
-	\item Personas hablando de fondo: Presente usualmente cuando un participante se encuentra en un ambiente público.
-	\item Ruido de tráfico: Ruido presente cuando un participante se encuentra en la vía pública.
-	\item Ruidos generados por mascotas: Presentes usualmente en videoconferencias domésticas. En particular se utilizaron ladridos de perro y maullidos de gato.
-\end{itemize}
-
-Las señales de ruido fueron tomadas de tres bases de datos distintas:
-
-\begin{enumerate}
-	\item La base generada por Microsoft en \cite{a_scalable_noisy_speech_dataset_and_online_subjective_test_framework}.
-	\item Freesound: https://freesound.org/ .
-	\item Google AudioSet: https://research.google.com/audioset/ .
-\end{enumerate}
-
-De (1) se obtuvieron señales de ruido correspondientes a la clase \emph{ruido de fondo} y \emph{tipeo}. De (2) se obtuvieron más señales correspondientes al ruido \emph{tipeo}. De (3) se obtuvieron las clases \emph{tráfico} y \emph{mascotas}.
+Las señales de ruido consisten en 14 tipos de ruidos: aire acondicionado, anuncios por alto parlante, autos, impresora, puertas, masticar, personas hablando, vecinos hablando, sillas, tráfico, calles y avenidas, tipeo y aspiradora.
 
 Al igual que las señales de habla, todas las señales de ruido fueron muestreadas a 16 kHz.
 
@@ -42,12 +36,10 @@ Como dijimos al comienzo de la presente sección, a partir de la base de señale
 Los algoritmos se desempeñarán de manera diferente dependiendo del nivel de ruido ($SNR$) que tenga cada una de las señales procesadas. El presente trabajo se limita a trabajar con el siguiente conjunto de niveles $SNR$:
 
 \begin{equation*}
-	\{ \SI{-5}{dB}, \; \SI{0}{dB}, \; \SI{5}{dB}, \; \SI{10}{dB}, \; \SI{15}{dB}, \; \SI{20}{dB}, \; \infty \, \si{dB} \}
+	\{ \SI{-5}{dB}, \; \SI{0}{dB}, \; \SI{5}{dB}, \; \SI{10}{dB}, \; \SI{15}{dB}, \; \SI{20}{dB} \}
 \end{equation*}
 
-El caso $SNR = \infty \, \si{dB}$ describe el caso de señales de habla sin ruido. Este caso se lo incluye porque se busca que los algoritmos no distorsionen señales que no contienen ruido.
-
-\subsubsection{Mezcla de señales a distintos SNRs}
+\subsubsection{Mezclado de señales}
 
 El primer paso para mezclar la señal de habla con la señal de ruido es normalizar ambas señales de tal manera que tengan el mismo valor RMS. A este proceso se le llama normalización RMS.
 
@@ -117,7 +109,23 @@ Finalmente la señal de habla ruidosa viene dada por:
 	y[k] = c_3 \left( s'[k] + c_2 \; n'[k] \right)
 \end{equation*}
 
-\subsubsection{Niveles base de PESQ y STOI}
+\subsubsection{Base de señales de habla ruidosa}
+
+A partir de el conjunto de entrenamiento de señales de habla sin ruido y del conjunto de entrenamiento de señales de ruido, utilizando el proceso de mezclado descrito en la sección anterior, se generó el conjunto de entrenamiento de señales de habla ruidosa. Lo mismo se realizó para generar el conjunto de pruebas de señales de habla ruidosa. A continuación se detallan los pasos realizados:
+
+\begin{itemize}
+	\item Se escoge aleatoriamente un señal de habla sin ruido.
+	\item Se escoge una señal de ruido.
+	\item En el paso anterior, pueden suceder dos cosas, que el ruido escogido tenga mayor o menor duración que la señal de habla. En el caso que tenga menor, se escoge otra señal de ruido, repitiendo este proceso hasta llegar a la duración de la señal de habla.
+	\item Se mezclan ambas señales utilizando un nivel de SNR aleatorio en el conjunto \{-5, 0, 5, 10, 15, 20, 40\}.
+	\item Cada señal de habla es al menos utilizada dos veces y mezclada con ruidos distintos.
+	\item El proceso se repite hasta utilizar todas las señales de habla. Las señales de ruido son reutilizadas hasta cubrir el total de señales de habla.
+\end{itemize}
+
+El conjunto de entrenamiento resultante consta de aproximadamente 38 horas de duración y el conjunto de pruebas resultante de 7 horas.
+
+
+\subsection{Niveles base de PESQ y STOI}
 
 Cada señal de habla ruidosa tendrá cierto nivel base para las medidas PESQ y STOI. El objetivo de los algoritmos de supresión de ruido es mejorar el nivel base.
 
@@ -139,7 +147,7 @@ Las figuras \ref{fig:ch5_pesq_histogram} y \ref{fig:ch5_stoi_histogram} muestran
 	\label{fig:ch5_stoi_histogram}
 \end{figure}
 
-A medida que la SNR aumenta, los valores medio de PESQ y STOI se corren hacia la derecha, es decir se acercan al valor máximo, que para PESQ es de 4.5 y para STOI es de 1. Ambos límites son alcanzados cuando la SNR es infinita, es decir cuando no hay presencia de ruido en la señal de habla.
+A medida que la SNR aumenta, los valores medio de PESQ y STOI se corren hacia la derecha, es decir se acercan al valor máximo, que para PESQ es de 4.5 y para STOI es de 1.
 
 \subsection{Ruido correlacionado}
 

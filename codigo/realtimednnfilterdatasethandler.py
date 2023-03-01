@@ -284,6 +284,10 @@ class RealTimeNoisySpeechDatasetWithTimeFrequencyFeatures(IterableDataset):
 
         return torch.from_numpy(audio_frames_magnitude_stft), torch.from_numpy(audio[:audio_size])
 
+    def crop_stft(self, stft_magnitude):
+        stft_magnitude[stft_magnitude < self.min_value] = self.min_value
+        return stft_magnitude
+
     def get_audio(self, sample_idx, audio_type: AudioType):
         if sample_idx not in self.processed_audios:
             raise AudioNotProcessed('Audio {}, not present.'.format(sample_idx))
