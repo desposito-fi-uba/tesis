@@ -146,7 +146,7 @@ La validación se ejecutó cada 1.000 lotes de entrenamiento y en cada una se ut
 
 Al igual que para el caso del filtro adaptativo, se puso a prueba el desempeño del filtro neuronal en el conjunto de pruebas, computando las mismas medidas PESQ para cada uno de los niveles de ruido utilizados. 
 
-En la figura \ref{fig:ch7_pesq_by_snr} podemos ver las medidas \textbf{PESQ - Ruidosa} y \textbf{PESQ - Filtrada} en función del nivel de ruido. Se observa que la máxima mejora media en PESQ se logra para los niveles de ruido; $\SI{-5}{dB}$, $\SI{0}{dB}$ y $\SI{5}{dB}$. Para SNRs mayores, la mejora media en la PESQ disminuye manteniéndose positiva hasta los $\SI{20}{dB}$, donde se vuelve negativa. En la tabla \ref{table:ch7_pesq_by_snr} podemos ver el detalle de los resultados de la figura \ref{fig:ch7_pesq_by_snr}.
+En la figura \ref{fig:ch7_pesq_by_snr} podemos ver las medidas \textbf{PESQ - Ruidosa} y \textbf{PESQ - Filtrada} en función del nivel de ruido. Se observa que la máxima mejora media en PESQ se logra para los $\SI{5}{dB}$. Para SNRs menores y mayores, la mejora media en la PESQ disminuye manteniéndose positiva. En la tabla \ref{table:ch7_pesq_by_snr} podemos ver el detalle de los resultados de la figura \ref{fig:ch7_pesq_by_snr}.
 
 \begin{figure}
 	\centering
@@ -157,25 +157,21 @@ En la figura \ref{fig:ch7_pesq_by_snr} podemos ver las medidas \textbf{PESQ - Ru
 
 \begin{table}
 	\centering
-	\begin{tabular}{ |c|c|c|c|c|c|c| } 
+	\begin{tabular}{ |c|c|c|c|c|c|c|c| } 
 		\hline
-		SNR [dB] & $-5$ & $0$ & $5$ & $10$ & $15$ & $20$ \\ 
+		SNR [dB] & $-5$ & $0$ & $5$ & $10$ & $15$ & $20$ & Media \\ 
 		\hline
-		PESQ - Ruidosa & 1.96 & 2.37 & 2.65 & 3.00 & 3.29 & 3.56 \\
-		PESQ - Filtrada & 2.16 & 2.58 & 2.85 & 3.12 & 3.35 & 3.50 \\
+		PESQ - Ruidosa & 1.22 & 1.59 & 1.99 & 2.42 & 2.83 & 3.20 & 2.20 \\
+		PESQ - Filtrada & 1.38 & 1.86 & 2.31 & 2.68 & 2.96 & 3.23 & 2.40 \\
 		\hline
 	\end{tabular}
 	\caption{PESQ en función de la SNR.}
 	\label{table:ch7_pesq_by_snr}
 \end{table}
 
-%[2199] Noisy PESQ: 2.799255890755177
-%[2199] Filtered PESQ: 2.9217428156276575
-%[2199] Noisy STOI: 0.9270031623427075
-%[2199] Filtered STOI: 0.9177052034994769
+En la figura \ref{fig:ch7_pesq_by_noise_type} podemos ver la medida PESQ en función del tipo de ruido. Se observa que para todas las clases de ruido, el filtro neuronal, en promedio, logró mejorar la calidad de las señales ruidosas. Este comportamiento va en linea con lo observado en la figura \ref{fig:ch7_pesq_by_snr} donde vimos que para todos los niveles de ruido, se logró una mejora en la calidad. 
 
-
-En la figura \ref{fig:ch7_pesq_by_noise_type} podemos ver le medida PESQ en función del tipo de ruido. Las clases de ruido donde el filtro logró el mejor desempeño fue en; \emph{Tipeo}, \emph{Aire Acondicionado}, \emph{Aspiradora} e \emph{Impresora}. Esto se debe a que estas clases de ruido son mas estacionarias y por ende le es mas fácil a la red neuronal poder caracterizarlas.
+Las clases de ruido donde el filtro logró el mejor desempeño fue en; \emph{Aire Acondicionado}, \emph{Aspiradora} e \emph{Impresora}. Esto se debe a que estas clases de ruido son mas estacionarias y por ende le es mas fácil a la red neuronal poder caracterizarlas.
 
 \begin{figure}
 	\centering
@@ -184,20 +180,15 @@ En la figura \ref{fig:ch7_pesq_by_noise_type} podemos ver le medida PESQ en func
 	\label{fig:ch7_pesq_by_noise_type}
 \end{figure} 
 
-% [2199] Noisy PESQ: 2.9368886407946886
-% [2199] Filtered PESQ: 2.9214207319374506
-% [2199] Noisy STOI: 0.9390761638343121
-% [2199] Filtered STOI: 0.920014304694963
-
 En el ruido \emph{Vecinos} y \emph{Conversación} hay personas hablando, cuyas voces se mezclan con la señal de habla principal, dificultándole a la red identificar cuál es la señal a filtrar.
 
-El ruido \emph{Masticar} resulta ser el mas complejo de filtrar y se debe a que es altamente no-estacionario y de corta duración dificultándole a la red caracterizarlo adecuadamente. 
+El tipo de ruido \emph{Masticar} y el tipo de ruido \emph{Tipeo} resultan ser el mas complejo de filtrar y se debe a que es altamente no-estacionario y de corta duración dificultándole a la red caracterizarlo adecuadamente. 
 
 \subsubsection{Medida STOI}
 
 Se puso a prueba el desempeño del filtro neuronal en el conjunto de pruebas, computando las medidas STOI ya definidas, para cada uno de los niveles snr y tipos de ruidos utilizados. 
 
-En la figura \ref{fig:ch7_stoi_by_snr} podemos ver las medidas \textbf{STOI - Ruidosa} y \textbf{STOI - Filtrada} en función del nivel de ruido. Se observa que la máxima mejora media en STOI se logra para los $\SI{-5}{dB}$, y para SNRs mayores, la mejora media en la STOI disminuye. A partir de los $\SI{5}{dB}$ la señal filtrada tiene menor STOI que la ruidosa con lo cual, el filtro no solo no esta logrando mejorar el nivel base de STOI, sino que lo empeora. En el cuadro \ref{table:ch7_stoi_by_snr} podemos ver el detalle de los resultados de la figura \ref{fig:ch7_stoi_by_snr}.
+En la figura \ref{fig:ch7_stoi_by_snr} podemos ver las medidas \textbf{STOI - Ruidosa} y \textbf{STOI - Filtrada} en función del nivel de ruido. Se observa que la máxima mejora media en STOI se logra para los $\SI{-5}{dB}$, y para SNRs mayores, la mejora media en la STOI disminuye. A partir de los $\SI{5}{dB}$ la señal filtrada tiene menor STOI que la señal ruidosa original. En el cuadro \ref{table:ch7_stoi_by_snr} podemos ver el detalle de los resultados de la figura \ref{fig:ch7_stoi_by_snr}.
 
 \begin{figure}
 	\centering
@@ -208,12 +199,12 @@ En la figura \ref{fig:ch7_stoi_by_snr} podemos ver las medidas \textbf{STOI - Ru
 
 \begin{table}
 	\centering
-	\begin{tabular}{ |c|c|c|c|c|c|c| } 
+	\begin{tabular}{ |c|c|c|c|c|c|c|c| } 
 		\hline
-		SNR [dB] & $-5$ & $0$ & $5$ & $10$ & $15$ & $20$ \\ 
+		SNR [dB] & $-5$ & $0$ & $5$ & $10$ & $15$ & $20$ & Media \\ 
 		\hline
-		STOI - Ruidosa & 0.80 & 0.89 & 0.93 & 0.97 & 0.97 & 0.99 \\
-		STOI - Filtrada & 0.81 & 0.89 & 0.93 & 0.95 & 0.96 & 0.97 \\
+		STOI - Ruidosa & 0.67 & 0.80 & 0.89 & 0.94 & 0.98 & 0.99 & 0.88 \\
+		STOI - Filtrada & 0.70 & 0.81 & 0.89 & 0.93 & 0.95 & 0.96 & 0.87 \\
 		\hline
 	\end{tabular}
 	\caption{STOI en función de la SNR.}
@@ -221,7 +212,7 @@ En la figura \ref{fig:ch7_stoi_by_snr} podemos ver las medidas \textbf{STOI - Ru
 \end{table}
 
 
-En la figura \ref{fig:ch7_stoi_by_noise_type} podemos ver le medida STOI en función del tipo de ruido. A diferencia de la medida PESQ, la red logró una mejora unicamente para el tipo \emph{Tipeo} e \emph{Impresión}. Para las demás clases, la red no logró mejorar la inteligibilidad de las señales ruidosas.
+En la figura \ref{fig:ch7_stoi_by_noise_type} podemos ver la medida STOI en función del tipo de ruido. A diferencia de la medida PESQ, la red no logró, en promedio, mejorar la inteligibilidad de las señales ruidosas. Como vimos en la figura \ref{fig:ch7_stoi_by_snr}, a bajos SNRs logra una pequeña mejora y a altos SNRs hay una degradación importante, esta combinación genera que en promedio, la red no pueda lograr mejorar la inteligibilidad para los distintos tipos de ruidos.
 
 \begin{figure}
 	\centering

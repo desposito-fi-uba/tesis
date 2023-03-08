@@ -86,7 +86,7 @@ Uno de los objetivos del filtro de ruido es mejorar, o al menos mantener, la cal
 
 Como vimos en la sección \ref{sec:metrics}, las señales de habla ruidosa fueron construidas utilizando distintos valores de SNR. Una forma de evaluar el filtro es analizar qué tanto cambia la PESQ para cada valor de SNR utilizado.
 
-En la figura \ref{fig:ch6_pesq_by_snr} podemos ver las medidas \textbf{PESQ - Ruidosa} y \textbf{PESQ - Filtrada} en función del nivel de ruido. En la gráfica se observa que una vez superado los $\SI{5}{dB}$, el filtro empeoró la calidad de las señales de audio.
+En la figura \ref{fig:ch6_pesq_by_snr} podemos ver las medidas \textbf{PESQ - Ruidosa} y \textbf{PESQ - Filtrada} en función del nivel de ruido. En la gráfica se observa que una vez superado los $\SI{10}{dB}$, el filtro no logró mejorar la calidad de las señales de habla ruidosas, incluso genero un deterioro de la mismo.
 
 \begin{figure}
 	\centering
@@ -99,22 +99,17 @@ A medida que la SNR fue aumentando, le resultó cada vez más difícil al filtro
 
 \begin{table}
 	\centering
-	\begin{tabular}{ |c|c|c|c|c|c|c| } 
+	\begin{tabular}{ |c|c|c|c|c|c|c|c| } 
 		\hline
-		SNR [dB] & $-5$ & $0$ & $5$ & $10$ & $15$ & $20$ \\ 
+		SNR [dB] & $-5$ & $0$ & $5$ & $10$ & $15$ & $20$ & Media \\ 
 		\hline
-		PESQ - Ruidosa & 1.96 & 2.36 & 2.65 & 2.99 & 3.29 & 3.56 \\
-		PESQ - Filtrada & 2.18 & 2.54 & 2.70 & 2.89 & 2.95 & 2.89 \\
+		PESQ - Ruidosa & 1.22 & 1.58 & 1.99 & 2.42 & 2.82 & 3.20 & 2.20 \\
+		PESQ - Filtrada & 1.57 & 1.92 & 2.19 & 2.40 & 2.48 & 2.40 & 2.16 \\
 		\hline
 	\end{tabular}
 	\caption{PESQ en función de la SNR.}
 	\label{table:pesq_by_snr}
 \end{table}
-
-% [2199] Noisy PESQ: 2.799255890755177
-% [2199] Filtered PESQ: 2.6858125135325936
-% [2199] Noisy STOI: 0.9270031623427075
-% [2199] Filtered STOI: 0.9450888375748907~
 
 Otra forma de evaluar el filtro es analizar cómo varían las medidas en función del tipo de ruido. En la figura \ref{fig:ch6_pesq_by_noise_type} podemos ver la medida PESQ en función del tipo de ruido.
 
@@ -125,12 +120,9 @@ Otra forma de evaluar el filtro es analizar cómo varían las medidas en funció
 	\label{fig:ch6_pesq_by_noise_type}
 \end{figure} 
 
-% [2199] Noisy PESQ: 2.9368886407946886
-% [2199] Filtered PESQ: 2.8188107138075527
-% [2199] Noisy STOI: 0.9390761638343121
-% [2199] Filtered STOI: 0.9533274579765317
+El filtro adaptativo logró mejorar la calidad de las señales ruidosas en los tipos de ruidos; \emph{Conversación}, \emph{Vecinos}, \emph{Aspiradora} e \emph{Impresora}. Para los ruidos del tipo \emph{Tipeo} y \emph{Masticar}, la calidad disminuyó. Estos ruidos tienen la característica de ser de corta duración, lo que representa un inconveniente para el filtro adaptativo que necesita cierto tiempo para adaptarse a las nuevas condiciones de ruido y filtrarlo.
 
-El filtro adaptativo logró mejorar la calidad de las señales ruidosas en los tipos de ruidos; \emph{Conversación}, \emph{Vecinos}, \emph{Aire acondicionado}, \emph{Aspiradora} e \emph{Impresora}. Para los ruidos del tipo \emph{Tipeo} y \emph{Masticar}, la calidad disminuyó. Estos ruidos tienen la característica de ser de corta duración, lo que representa un inconveniente para el filtro adaptativo que necesita cierto tiempo para adaptarse a las nuevas condiciones de ruido y filtrarlo.
+Como se observa en la tabla \ref{table:pesq_by_snr}, en valor medio, la mejora en la PESQ es pequeña y esto explica porque para algunos tipos de ruido vemos una mejora en la calidad y en otros vemos una degradación.
 
 \subsubsection{Medida STOI}
 
@@ -169,19 +161,19 @@ En la figura \ref{fig:ch6_stoi_by_snr} podemos ver las medidas \textbf{STOI - Ru
 
 \begin{table}[ht]
 	\centering
-	\begin{tabular}{ |c|c|c|c|c|c|c| } 
+	\begin{tabular}{ |c|c|c|c|c|c|c|c| } 
 		\hline
-		SNR [dB] & $-5$ & $0$ & $5$ & $10$ & $15$ & $20$ \\ 
+		SNR [dB] & $-5$ & $0$ & $5$ & $10$ & $15$ & $20$ & Media \\ 
 		\hline
-		STOI - Ruidosa & 0.80 & 0.89 & 0.93 & 0.97 & 0.98 & 0.99 \\
-		STOI - Filtrada & 0.89 & 0.94 & 0.95 & 0.97 & 0.97 & 0.96 \\
+		STOI - Ruidosa & 0.67 & 0.80 & 0.89 & 0.94 & 0.97 & 0.99 & 0.88 \\
+		STOI - Filtrada & 0.82 & 0.88 & 0.92 & 0.93 & 0.93 & 0.91 & 0.90 \\
 		\hline
 	\end{tabular}
 	\caption{STOI en función de la SNR.}
 	\label{table:stoi_by_snr}
 \end{table}
 
-También se analizó la medida STOI como función del tipo de ruido. En la figura \ref{fig:ch6_stoi_by_noise_type} podemos ver dicha gráfica. Se observa la misma tendencia que para la medida PESQ, es decir, el desempeño en los ruidos \emph{Conversación}, \emph{Vecinos}, \emph{Aire acondicionado}, \emph{Aspiradora} y \emph{Impresora} fue mejor que en \emph{Tipeo} y \emph{Masticar}.
+También se analizó la medida STOI como función del tipo de ruido. En la figura \ref{fig:ch6_stoi_by_noise_type} podemos ver dicha gráfica. A diferencia de PESQ, se observa que a excepción de los ruidos del tipo \emph{Tipeo} y \emph{Masticar}, el filtro adaptativo, en promedio, logró una mejora de la inteligibilidad. La diferencia respecto a PESQ se explica mirando la figura \ref{fig:ch6_stoi_by_snr} donde podemos ver que para bajos SNRs, la mejora en la inteligibilidad es mayor que la mejora en la calidad, compensando así la degradación a altos niveles de SNR.
 
 \begin{figure}
 	\centering

@@ -110,6 +110,10 @@ class ModelEvaluator(object):
                 self._evaluate(batches_counter)
 
     def _evaluate(self, batches_counter):
+        # To not being constrained by gpu ram when using large batches see:
+        # * https://discuss.pytorch.org/t/multiple-forward-before-backward-call/20893/2
+        # * https://discuss.pytorch.org/t/how-to-implement-accumulated-gradient/3822/20
+        # * https://discuss.pytorch.org/t/how-to-implement-accumulated-gradient-in-pytorch-i-e-iter-size-in-caffe-prototxt/2522/14
         for i_epoch in range(self.num_epochs):
             for i_batch, sample_batched in enumerate(self.data_loader):
                 if self.push_metrics_every_x_batches:

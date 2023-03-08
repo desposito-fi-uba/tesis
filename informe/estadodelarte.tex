@@ -1,8 +1,9 @@
 \section{Estado del arte}
+\label{sec:estado_del_arte}
 
 En el presente capitulo se analizará el estado del arte de los canceladores de ruido para señales de habla captadas por un solo micrófono.
 
-Uno de los primeros trabajos donde se estudió los canceladores de ruido con filtros basados en redes neuronales fue en; \emph{A regression approach to speech enhacement based on deep neuronal networks} \cite{a_regression_approach_to_speech_enhancement_based_on_deep_neural_networks}. Los autores del articulo son; Yong Xu, Jun Du, Li-Rong Dai, and Chin-Hui Lee y fue publicado en el año 2015.
+Uno de los primeros trabajos donde se estudió los canceladores de ruido con filtros basados en redes neuronales fue en; \emph{A regression approach to speech enhacement based on deep neuronal networks} \cite{a_regression_approach_to_speech_enhancement_based_on_deep_neural_networks}. Los autores del articulo son; Yong Xu, Jun Du, Li-Rong Dai, and Chin-Hui Lee y fue publicado en el año 2015. En futuras menciones a este trabajo se lo referenciará con las siglas \emph{TR1}.
 
 La arquitectura de red neuronal usada es una red del tipo \emph{feedforward} completamente conectada con hasta 4 capas ocultas y cada una con hasta 2048 unidades. La base de datos usada para entrenar la red contiene 104 tipos de ruidos diferentes y un total de 100 horas de entrenamiento.
 
@@ -16,6 +17,7 @@ Una de las métricas usadas fue la PESQ y a continuación se detallan los valore
 		\hline
 		PESQ - Ruidosa & 1.37 & 1.61 & 1.90 & 2.22 & 2.55 & 2.88 & 2.09 \\
 		PESQ - Filtrada & 1.75 & 2.09 & 2.44 & 2.78 & 3.09 & 3.37 & 2.59 \\
+		\hline
 		STOI - Ruidosa & - & - & - & - & - & - & - \\
 		STOI - Filtrada & - & - & - & - & - & - & - \\
 		\hline
@@ -23,9 +25,9 @@ Una de las métricas usadas fue la PESQ y a continuación se detallan los valore
 	\caption{PESQ en función de la SNR.}
 \end{table}
 
-Otro de los trabajos interesantes para analizar es \emph{Speech Enhancement In Multiple-Noise Conditions using Deep Neural Networks} publicado por Anurag Kumar y Dinei Florencio en el año 2016 \cite{speech_enhancement_in_multiple_moise_conditions_using_deep_neural_networks}.
+Otro de los trabajos interesantes para analizar es \emph{Speech Enhancement In Multiple-Noise Conditions using Deep Neural Networks} publicado por Anurag Kumar y Dinei Florencio en el año 2016 \cite{speech_enhancement_in_multiple_moise_conditions_using_deep_neural_networks}. En futuras menciones a este trabajo se lo referenciará con las siglas \emph{TR2}.
 
-Nuevamente la arquitectura utilizada es del tipo feedforward completamente conectada con 3 unidades ocultas, cada una con 2048 unidades. La base de datos usada para entrenar la red tiene una duración total de 100 horas. 
+Nuevamente la arquitectura utilizada es del tipo feedforward completamente conectada con 3 capas ocultas, cada una con 2048 unidades. La base de datos usada para entrenar la red tiene una duración total de 100 horas. 
 
 Las medidas usadas para analizar los resultaron fueron la PESQ y la STOI. A continuación podemos encontrar los resultados que obtuvieron:
 
@@ -37,6 +39,7 @@ Las medidas usadas para analizar los resultaron fueron la PESQ y la STOI. A cont
 		\hline
 		PESQ - Ruidosa & 1.46 & 1.77 & 2.11 & 2.53 & 2.88 & 3.23 & - \\
 		PESQ - Filtrada & 1.92 & 2.32 & 2.69 & 3.09 & 3.40 & 3.67 & - \\
+		\hline
 		STOI - Ruidosa & 0.612 & 0.714 & 0.813 & 0.898 & 0.945 & 0.974 & - \\
 		STOI - Filtrada & 0.703 & 0.804 & 0.872 & 0.923 & 0.950 & 0.965 & - \\
 		\hline
@@ -44,12 +47,9 @@ Las medidas usadas para analizar los resultaron fueron la PESQ y la STOI. A cont
 	\caption{PESQ y STOI en función de la SNR.}
 \end{table}
 
-%Delta PESQ 0.5, 0.59, 0.63, 0.61, 0.56, 0.48
-%Delta STOI 0.105, 0.098, 0.066, 0.03, 0.008, -0.004
+El siguiente trabajo que resultó relevante de analizar fue uno de los primeros en proponer otro tipo de arquitectura de red neuronal. El nombre del artículo es \emph{A fully convolutional neural network for speech enhancement} publicado por Se Rim Park y Jinwon Lee en el año 2016 \cite{a_fully_convolutional_neural_network_for_speech_enhancement}.  En futuras menciones a este trabajo se lo referenciará con las siglas \emph{TR3}.
 
-El siguiente trabajo que resultó relevante de analizar fue uno de los primeros en proponer otro tipo de arquitectura de red neuronal. El nombre del artículo es \emph{A fully convolutional neural network for speech enhancement} publicado por Se Rim Park y Jinwon Lee en el año 2016 \cite{a_fully_convolutional_neural_network_for_speech_enhancement}. 
-
-La arquitectura utilizada fue del tipo convolucional con 16 capas. La red contaba con un codificador y un decodificador similar a los descritos en \ref{sec:redes_autocodificadoras}. La base de datos usada para entrenar la red contiene 27 tipos de ruidos diferentes mezclados con las señales de habla únicamente a $\SI{0}{dB}$. A continuación podemos ver los resultados que obtuvieron:
+La arquitectura utilizada fue del tipo convolucional con 16 capas. La red contaba con un codificador y un decodificador similar a los descritos en la sección \ref{sec:redes_autocodificadoras}. La base de datos usada para entrenar la red contiene 27 tipos de ruidos diferentes mezclados con las señales de habla únicamente a $\SI{0}{dB}$. A continuación podemos ver los resultados que obtuvieron:
 
 \begin{table}[H]
 	\centering
@@ -59,6 +59,7 @@ La arquitectura utilizada fue del tipo convolucional con 16 capas. La red contab
 		\hline
 		PESQ - Ruidosa & - & - & - & - & - & - & - \\
 		PESQ - Filtrada & - & 2.34 & - & - & - & - & - \\
+		\hline
 		STOI - Ruidosa & - & - & - & - & - & - & - \\
 		STOI - Filtrada & - & 0.83 & - & - & - & - & - \\
 		\hline
@@ -66,10 +67,9 @@ La arquitectura utilizada fue del tipo convolucional con 16 capas. La red contab
 	\caption{PESQ y STOI en función de la SNR.}
 \end{table}
 
+Otro de los artículos analizados fue \emph{A Convolutional Recurrent Neural Network for Real-Time Speech} el cual utiliza una arquitectura convolucional con una capa recurrente. Ademas, lo interesante es que propone un procesamiento de las señales de manera causal para que pueda utilizarse para filtrado de ruido en tiempo real. El trabajo fue publicado por Ke Tan y DeLiang Wang en el año 2018 \cite{a_convolutional_recurrent_neural_network_for_real_time_speech_enhancement}.  En futuras menciones a este trabajo se lo referenciará con las siglas \emph{TR4}.
 
-Otro de los artículos analizados fue \emph{A Convolutional Recurrent Neural Network for Real-Time Speech} el cual utiliza una arquitectura convolucional con una capa recurrente. Ademas, lo interesante es que propone un procesamiento de las señales de manera causal para que pueda utilizarse para filtrado de ruido en tiempo real. El trabajo fue publicado por Ke Tan y DeLiang Wang en el año 2018 \cite{a_convolutional_recurrent_neural_network_for_real_time_speech_enhancement}.
-
-La base de datos usada tiene una duración total de 126 horas y utilizan niveles de ruido en el rango [-5, 0] dB. A continuación podemos ver los resultados que obtuvieron:
+La base de datos usada tiene una duración total de 126 horas y utilizan niveles de ruido en el rango [-5, -2] dB. A continuación podemos ver los resultados que obtuvieron:
 
 \begin{table}[H]
 	\centering
@@ -79,6 +79,7 @@ La base de datos usada tiene una duración total de 126 horas y utilizan niveles
 		\hline
 		PESQ - Ruidosa & 1.50 & 1.67 & - & - & - & - & - & - \\
 		PESQ - Filtrada & 2.15 & 2.41 & - & - & - & - & - & - \\
+		\hline
 		STOI - Ruidosa & 0.581 & 0.657 & - & - & - & - & - & - \\
 		STOI - Filtrada & 0.778 & 0.840 & - & - & - & - & - & - \\
 		\hline
@@ -86,84 +87,82 @@ La base de datos usada tiene una duración total de 126 horas y utilizan niveles
 	\caption{PESQ y STOI en función de la SNR.}
 \end{table}
 
-WEIGHTED SPEECH DISTORTION LOSSES FOR
-NEURAL-NETWORK-BASED REAL-TIME SPEECH ENHANCEMENT
+El siguiente trabajo analizado es; \emph{Weighted speech distortion losses for neural-network-based real-time speech enhancement} \cite{weighted_speech_distortion_losses_for_neural_network_based_real_time_speech_enhancement}. Este trabajo, una de sus particularidades, es que utilizó la misma base de datos que la utilizada en este trabajo \cite{a_scalable_noisy_speech_dataset_and_online_subjective_test_framework}. El articulo fue publicado en el año 2020 por Reddy, Cutler, Braun, Dubey, Tashev, Xia.  
 
-Rango de SNRs: 0 a 40
-14 tipos de ruidos
-Usan una red basada en layers GRU
-Usan una función de error compleja
+La arquitectura de red neuronal que usan esta formada por capas recurrentes las cuales usan unidades GRU. El trabajo investiga distintos tipos de funciones de error tratando de optimizar la relación de compromiso que existe entre la reducción de ruido y la distorsión del habla. En futuras menciones a este trabajo se lo referenciará con las siglas \emph{TR5}. A continuación podemos ver los resultados:
 
-Noisy PESQ 2.22
-Noisy STOI 88
+\begin{table}[H]
+	\centering
+	\begin{tabular}{ |c|c|c|c|c|c|c|c|c| } 
+		\hline
+		 & Media \\ 
+		\hline
+		PESQ - Ruidosa & 2.22 \\
+		PESQ - Filtrada & 2.65 \\
+		\hline
+		STOI - Ruidosa & 0.88 \\
+		STOI - Filtrada & 0.91 \\
+		\hline
+	\end{tabular}
+	\caption{Valores medios de PESQ y STOI.}
+\end{table}
 
-Filtered PESQ 2.65
-Filtered STOI 90.7
+Además, los autores comparan sus resultados con la arquitectura originalmente propuesta en \cite{a_scalable_noisy_speech_dataset_and_online_subjective_test_framework}. A estos resultados se los referenciará con la siglas \emph{TR6} y los podemos ver a continuación:
 
-Towards speech enhancement using a variational U-Net architecture
+\begin{table}[H]
+	\centering
+	\begin{tabular}{ |c|c|c|c|c|c|c|c|c| } 
+		\hline
+		& Media \\ 
+		\hline
+		PESQ - Ruidosa & 2.22 \\
+		PESQ - Filtrada & 2.55 \\
+		\hline
+		STOI - Ruidosa & 0.88 \\
+		STOI - Filtrada & 0.88 \\
+		\hline
+	\end{tabular}
+	\caption{Valores medios de PESQ y STOI.}
+\end{table}
 
-Rango de SNRs: 0 a 20
+Otro de los trabajos analizados fue \emph{Towards speech enhancement using a variational U-Net architecture} \cite{towards_speech_enhancement_using_a_variational_U-Net_architecture}. El artículo fue publicado en el año 2020 por Eike J. Nustede y Jörn Anemüller. La arquitectura de red neuronal usada es convolucional, con un codificador y un decodificador. Esta arquitectura de la red neuronal fue la utilizada como base para la presente tesis. En futuras menciones a este trabajo se lo referenciará con las siglas \emph{TR7}.
 
-Cantidad de tipos de ruidos sin especificar
+La base de datos utilizada tiene una duración de 100 horas y el rango de SNR es [0, 20] dB.
 
-15 horas de entrenamiento
+\begin{table}[H]
+	\centering
+	\begin{tabular}{ |c|c| } 
+		\hline
+		 & Media \\ 
+		\hline
+		PESQ - Ruidosa & 2.52 \\
+		PESQ - Filtrada & 3.11 \\
+		\hline
+		STOI - Ruidosa & 0.92 \\
+		STOI - Filtrada & 0.95 \\
+		\hline
+	\end{tabular}
+	\caption{Valores medios de PESQ y STOI.}
+\end{table}
 
-noisy pesq 2.52 
-noisy stoi 91.51
+A continuación podemos ver una tabla comparativa sobre los trabajos que utilizaron el rango SNR de $\SI{-5}{dB}$ a $\SI{20}{dB}$ para mezclar las señales de habla y las señales de ruido. Además, se tiene en cuenta únicamente los trabajos que analizaron los resultados en términos de las medidas STOI y PESQ:
 
-filtered pesq 3.01 
-filtered stoi 94.08
+\begin{table}[H]
+	\centering
+	\begin{tabular}{ |c|c|c|c|c| } 
+		\hline
+		& TR2 & TR5 & TR6 & TR7 \\ 
+		\hline
+		PESQ - Ruidosa & 2.33 & 2.22 & 2.22 & 2.52 \\
+		PESQ - Filtrada & 2.84 & 2.65 & 2.55 & 3.11 \\
+		PESQ - Mejora & 22\%  & 19\% & 14\% & 23\% \\
+		\hline
+		STOI - Ruidosa & 0.81 & 0.88 & 0.88 & 0.92 \\
+		STOI - Filtrada & 0.87 & 0.91 & 0.88 & 0.95 \\
+		STOI - Mejora & 7\% & 3\% & 0\% & 3\% \\
+		\hline
+	\end{tabular}
+	\caption{Comparación de resultados.}
+\end{table}
 
-100 horas de entrenamiento
-
-filtered pesq 3.11
-filtered stoi 94.60
-
-noisy pesq 2.52 
-noisy stoi 91.51
-
-A Perceptually-Motivated Approach for Low-Complexity, Real-Time Enhancement of Fullband Speech
-
-Rango de SNRs: -5 a 45
-
-Cantidad de tipos de ruidos sin especificar
-
-120 horas de entrenamiento
-
-filtered pesq 2.54
-
-noisy pesq 1.97 
-
-
-
-Feature enhancement by bidirectional LSTM networks for conversational speech recognition in highly non-stationary noise
-
-
-
-
-
-Mi tesis 1
-
-Rango de SNRs: -5 a 40
-14 tipos de ruidos
-Convolutional network
-
-Noisy PESQ: 2.48
-Filtered PESQ: 2.55
-
-Noisy STOI: 0.89
-Filtered STOI: 0.88
-
-Mi tesis 2
-
-Rango de SNRs: -5 a 20
-14 tipos de ruidos
-Convolutional network
-
-Noisy PESQ: 2.20
-Filtered PESQ: 2.40
-
-Noisy STOI: 0.875
-Filtered STOI: 0.871
-
-
+En terminos de PESQ, los mejores resultados fueron obtenidos por los experimentos \emph{TR2} y \emph{TR7}. En terminos de STOI se destacó el trabajo \emph{TR2} y el trabajo \emph{TR6} no logró mejora alguna. En las siguientes secciones se realizará una comparación entre los resultados obtenidos en el presente trabajo con los obtenidos en los artículos mencionados.

@@ -104,6 +104,15 @@ def plot_ecm_and_noise_level(input_dir, filter_type):
             noise, _ = librosa.load(noise_path, sr=None)
             noisy, _ = librosa.load(noisy_path, sr=None)
 
+            clean, noisy, noise, filtered = remove_not_matched_snr_segments(
+                clean, noisy, noise, filtered, int(snr), RunSettings().fs
+            )
+            if clean.size == 0:
+                print(
+                    f'Ignoring sample {sample_idx} because of empty length after removal of not matched snr segments'
+                )
+                continue
+
             estimation_error = np.mean(np.abs(filtered - clean) ** 2)
             estimation_errors.append(estimation_error)
 
@@ -149,10 +158,10 @@ def plot_pesq_stoi(input_dir, filter_type):
     exclude_snr = []
     must_remove_not_matched_snr_segments = False
     if filter_type == 'dnn':
-        exclude_snr = ['-5', '0']
+        exclude_snr = [] # ['-5', '0']
         must_remove_not_matched_snr_segments = True
     elif filter_type == 'af':
-        exclude_snr = ['20', '15']
+        exclude_snr = [] # ['-5']
         must_remove_not_matched_snr_segments = True
 
     noisy_pesq = {snr: [] for snr in snrs_used}
