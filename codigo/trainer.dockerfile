@@ -8,6 +8,6 @@ ADD . code
 
 RUN mkdir -p code/tmp
 
-RUN pip install -r code/requirements.txt
+RUN pip install -r code/requirements.txt --ignore-installed PyYAML
 
 WORKDIR code

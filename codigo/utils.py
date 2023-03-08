@@ -142,3 +142,10 @@ def clip_audio(audio, min_val=10**-20):
     audio[np.logical_and(-min_val < audio, audio <= 0)] = -min_val
     audio[np.logical_and(0 < audio, audio < min_val)] = min_val
     return audio
+
+
+def free_from_gpu(tensor):
+    tensor_cpu = tensor.detach().cpu()
+    del tensor
+    return tensor_cpu
+

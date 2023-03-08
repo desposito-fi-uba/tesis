@@ -48,11 +48,11 @@ La tasa de muestreo en frecuencia afecta las siguientes características:
 	\item Recordemos de la sección \ref{sec:muestreo_en_tiempo_y_frecuencia} que $R \leq L \leq N$, es decir $N \ge 256$.
 \end{itemize}
 
-Nuevamente tenemos una relación de compromiso que debemos mantener en el nivel adecuado. Para el presente trabajo se utilizó una FFT de $2^{10} = 1024$ puntos. 
+Nuevamente tenemos una relación de compromiso que debemos mantener en el nivel adecuado. Para el presente trabajo se utilizó una FFT de $2^{9} = 512$ puntos. 
 
 \subsubsection{R Solapamiento de ventanas en la STFT}
 
-En la sección \ref{sec:overlapp_and_and} vimos que una elección que permite recuperar la señal de entrada dada la STFT, es utilizar una ventana de Hamming que cumpla la relación $R = L/2$. Dado que en nuestro caso tenemos $L = 256$, obtenemos que $R=128$. Con este valor de $R$ también verificamos la condición necesaria $R \leq L \leq N$, ya que tenemos $128 \leq 256 \leq 1024$.
+En la sección \ref{sec:overlapp_and_and} vimos que una elección que permite recuperar la señal de entrada dada la STFT, es utilizar una ventana de Hamming que cumpla la relación $R = L/2$. Dado que en nuestro caso tenemos $L = 256$, obtenemos que $R=128$. Con este valor de $R$ también verificamos la condición necesaria $R \leq L \leq N$, ya que tenemos $128 \leq 256 \leq 512$.
 
 \subsubsection{J Cantidad de muestras en el dominio del tiempo en la STFT}
 \label{sec:ventanas_en_espectrogramas}
@@ -103,15 +103,15 @@ Idealmente, el tamaño del lote debería ser el conjunto de entrenamiento comple
 
 Por otro lado, si el tamaño de lote es muy pequeño, el algoritmo de optimización no logra encontrar la dirección de minimización. En estos casos, el gradiente presenta una gran variación muestra a muestra.
 
-Por último, en nuestro caso, debemos también tener en cuenta que una señal de habla no es la muestra que ingresa a la red sino que lo que ingresa a la red son espectrogramas de esa señal de habla. Las señales de habla utilizadas en el presente trabajo tienen en promedio 80 espectrogramas. Es esencial para el entrenamiento adecuado de la red, que antes de cada actualización de los parámetros se haya pasado por la red muestras de distintos audios, de lo contrario el optimizador no logrará encontrar la dirección de minimización. En el presente trabajo, durante el entrenamiento, se utilizó un tamaño de lote de $256$ muestras.
+Por último, en nuestro caso, debemos también tener en cuenta que una señal de habla no es la muestra que ingresa a la red sino que lo que ingresa a la red son espectrogramas de esa señal de habla. Las señales de habla utilizadas en el presente trabajo tienen en promedio 80 espectrogramas. Es esencial para el entrenamiento adecuado de la red, que antes de cada actualización de los parámetros se haya pasado por la red muestras de distintos audios, de lo contrario el optimizador no logrará encontrar la dirección de minimización. En el presente trabajo, durante el entrenamiento, se utilizó un tamaño de lote de $500$ muestras.
 
 \subsubsection{Estructura de la red neuronal}
 
-En la sección \ref{sec:cantidad_muestras_frecuencia} vimos que el largo de la DFT utilizada para el cómputo de la STFT es de $N=1024$. Las señales de habla son señales reales, con lo cual la DFT tendrá simetría conjugada, esto nos lleva a que la información espectral esté duplicada.
+En la sección \ref{sec:cantidad_muestras_frecuencia} vimos que el largo de la DFT utilizada para el cómputo de la STFT es de $N=512$. Las señales de habla son señales reales, con lo cual la DFT tendrá simetría conjugada, esto nos lleva a que la información espectral esté duplicada.
 
-Utilizar toda la DFT es innecesario e implicaría un tiempo de cómputo mayor. Debido a la simetría que presenta, toda la información útil de la DFT la podemos encontrar en cada una de las mitades de la simetría. Esto nos lleva a que los espectrogramas que sirven como entrada a la red están conformados por $512$ muestras en el dominio de la frecuencia.
+Utilizar toda la DFT es innecesario e implicaría un tiempo de cómputo mayor. Debido a la simetría que presenta, toda la información útil de la DFT la podemos encontrar en cada una de las mitades de la simetría. Esto nos lleva a que los espectrogramas que sirven como entrada a la red están conformados por $256$ muestras en el dominio de la frecuencia.
 
-Por otro lado, en la sección \ref{sec:ventanas_en_espectrogramas}, vimos que la cantidad de ventanas a incluir en un espectrograma es de $J=64$. Esto nos lleva a obtener el tamaño de los espectrogramas, el cual es de $512 \times 64$. El tamaño de los espectrogramas resulta esencial para definir la estructura de la red.
+Por otro lado, en la sección \ref{sec:ventanas_en_espectrogramas}, vimos que la cantidad de ventanas a incluir en un espectrograma es de $J=64$. Esto nos lleva a obtener el tamaño de los espectrogramas, el cual es de $256 \times 64$. El tamaño de los espectrogramas resulta esencial para definir la estructura de la red.
 
 Como vimos en la sección \ref{sec:redes_tipo_u}, a medida que los espectrogramas pasan por las distintas capas de la red, el tamaño se irá reduciendo hasta terminar el camino del codificador. Luego, pasan a la parte del decodificador, donde el tamaño se va recuperando capa a capa. En el codificador, a medida que se reduce el tamaño se aumenta la cantidad de filtros presentes en la capa convolucional. En el decodificador, a medida que se aumenta el tamaño, se reduce la cantidad de filtros.
 
@@ -128,77 +128,16 @@ En la figura \ref{fig:ch7_red_estructura} podemos ver cómo se va modificando el
 
 El entrenamiento de la red consiste en pasar por ella espectrogramas de señales ruidosas, obtener el error respecto de los espectrogramas de las señales sin ruido y modificar los pesos de la red de acuerdo a ese error.
 
-Usualmente, durante el entrenamiento, se le muestra a la red más de una vez cada muestra del conjunto de entrenamiento. Es posible que después de cierto punto, la red empiece a aprenderse por fuerza bruta el conjunto de entrenamiento con lo que el error de generalización comienza a aumentar. Para poder detectar este momento se suele introducir una etapa de validación cada x lotes de entrenamiento. La validación se hace contra el conjunto de validación, el cual es un subconjunto del conjunto de pruebas.
+Usualmente, durante el entrenamiento, se le muestra a la red más de una vez cada muestra del conjunto de entrenamiento. Es posible que después de cierto punto, la red empiece a aprenderse por fuerza bruta el conjunto de entrenamiento con lo que el error de generalización comienza a aumentar. Para poder detectar este momento se suele introducir una etapa de validación cada x lotes de entrenamiento, la cual es realizada contra el conjunto de prueba. 
 
-Durante el entrenamiento se evaluó el desempeño de tres métricas:
-
-\begin{enumerate}
-	\item El error cuadrático medio entre la salida de la red y el espectrograma sin ruido alineado con la entrada.
-	\item El error porcentual absoluto medio MAPE (por sus siglas en inglés) nuevamente entre la salida de la red y el espectrograma sin ruido alineado con la entrada. \label{item:mape}.
-	\item El MAPE entre las señales de audio construidas a partir de las salidas de la red y la señal de habla original. \label{item:audio_mape}
-\end{enumerate}
-
-El MAPE se obtiene como:
-
-\begin{equation*}
-	\frac{1}{n} \sum_{\forall i} \left| \frac{y_i - s_i}{y_i} \right|
-\end{equation*}
-
-donde $y$ es el valor obtenido y $s$ la señal esperada.
-
-Para las métricas \ref{item:mape} y \ref{item:audio_mape}, además, se computó un límite superior dado por la señal de habla sin ruido y la señal de habla ruidosa.
-
-En las figuras \ref{fig:ch7_entrenamiento_mse} y \ref{fig:ch7_validacion_mse} podemos ver el error cuadrático medio durante el entrenamiento y durante la validación.
+La validación se ejecutó cada 1.000 lotes de entrenamiento y en cada una se utilizó un total de 500 audios elegidos de manera aleatoria del conjunto de prueba. En la etapa de validación del lote 40.000 se observó que el error de generalización aumentó y el aumento fue confirmado en los siguientes lotes, por lo que el entrenamiento fue detenido. Dado que a partir del lote 40.000, el error comenzó a aumentar, el modelo seleccionado fue el obtenido en dicho lote y se descartaron los siguientes. En la figura \ref{fig:ch7_entrenamiento_mse} podemos ver el error cuadrático medio durante el entrenamiento.
 
 \begin{figure}
 	\centering
-	\centerline{\includegraphics[scale=0.65]{images/ch7/entrenamiento/train_mse.png}}
+	\centerline{\includegraphics[scale=0.65]{images/ch7/train_mse.png}}
 	\caption{Error cuadrático medio durante el entrenamiento.}
 	\label{fig:ch7_entrenamiento_mse}
 \end{figure}
-
-\begin{figure}
-	\centering
-	\centerline{\includegraphics[scale=0.65]{images/ch7/entrenamiento/val_mse.png}}
-	\caption{Error cuadrático medio durante la validación.}
-	\label{fig:ch7_validacion_mse}
-\end{figure}
-
-La validación se ejecutó cada 2.000 lotes de entrenamiento y se realizó sobre un total de 500 audios.
-
-Como se puede ver en la figura \ref{fig:ch7_validacion_mse}, en trazo claro, el error de generalización comenzó a aumentar en el número de lote 8.000 y el aumento fue confirmado en los lotes 10.000 y 12.000, por lo que el entrenamiento fue frenado. Dado que a partir del lote 8000, el error comenzó a aumentar, el modelo seleccionado fue el obtenido en el lote 8.000 y se descartaron los modelos de los lotes 10.000 y 12.000.
-
-Por otro lado, es imprescindible contar con métricas como la \ref{item:mape} y \ref{item:audio_mape} para poder observar si el modelo de red obtenido en cada iteración, logra mejorar los errores de referencia obtenida por medio de la señal de habla original y la señal de habla ruidosa ruidosa. En las figuras \ref{fig:ch7_entrenamiento_mape}, \ref{fig:ch7_val_mape}, \ref{fig:ch7_entrenamiento_audio_mape} y \ref{fig:ch7_val_audio_mape} podemos encontrar el resultado de tales métricas.
-
-\begin{figure}
-	\centering
-	\centerline{\includegraphics[scale=0.65]{images/ch7/entrenamiento/train_stft_mape.png}}
-	\caption{MAPE durante el entrenamiento.}
-	\label{fig:ch7_entrenamiento_mape}
-\end{figure}
-
-\begin{figure}
-	\centering
-	\centerline{\includegraphics[scale=0.65]{images/ch7/entrenamiento/val_stft_mape.png}}
-	\caption{MAPE durante la validación.}
-	\label{fig:ch7_val_mape}
-\end{figure}
-
-\begin{figure}
-	\centering
-	\centerline{\includegraphics[scale=0.65]{images/ch7/entrenamiento/train_audio_mape.png}}
-	\caption{MAPE en las señales de audio durante el entrenamiento.}
-	\label{fig:ch7_entrenamiento_audio_mape}
-\end{figure}
-
-\begin{figure}
-	\centering
-	\centerline{\includegraphics[scale=0.65]{images/ch7/entrenamiento/val_audio_mape.png}}
-	\caption{MAPE en las señales de audio durante la validación.}
-	\label{fig:ch7_val_audio_mape}
-\end{figure}
-
-En las figuras \ref{fig:ch7_val_mape} y \ref{fig:ch7_val_audio_mape} podemos ver que, aproximadamente después del lote 3.000, los errores en el conjunto de validación ya estaban por debajo de su cota máxima, con lo cual podemos estar seguros que el modelo de red obtenido en el lote 8000 ya va a haber logrado filtrar parcial o totalmente el ruido presente en las señales de habla ruidosas.
 
 \subsection{Resultados}
 \label{sec:resultados_filtro_neuronal}
@@ -207,109 +146,99 @@ En las figuras \ref{fig:ch7_val_mape} y \ref{fig:ch7_val_audio_mape} podemos ver
 
 Al igual que para el caso del filtro adaptativo, se puso a prueba el desempeño del filtro neuronal en el conjunto de pruebas, computando las mismas medidas PESQ para cada uno de los niveles de ruido utilizados. 
 
-En la figura \ref{fig:ch7_pesq_resume} podemos ver la medida $\Delta \textbf{PESQ Valor medio}$ en función del nivel de ruido. Se observa que la máxima mejora media en PESQ se logra para los $\SI{15}{dB}$, y tanto para SNRs menores como mayores, la mejora media en la PESQ disminuye, siempre manteniéndose positiva. En la siguiente sección se analiza este comportamiento en detalle.
+En la figura \ref{fig:ch7_pesq_by_snr} podemos ver las medidas \textbf{PESQ - Ruidosa} y \textbf{PESQ - Filtrada} en función del nivel de ruido. Se observa que la máxima mejora media en PESQ se logra para los $\SI{5}{dB}$. Para SNRs menores y mayores, la mejora media en la PESQ disminuye manteniéndose positiva. En la tabla \ref{table:ch7_pesq_by_snr} podemos ver el detalle de los resultados de la figura \ref{fig:ch7_pesq_by_snr}.
 
 \begin{figure}
 	\centering
-	\centerline{\includegraphics[scale=0.70]{images/ch7/objective_metrics/metric_PESQ.png}}
+	\centerline{\includegraphics[scale=0.75]{images/ch7/pesq_by_snr.png}}
 	\caption{PESQ en función de la SNR.}
-	\label{fig:ch7_pesq_resume}
+	\label{fig:ch7_pesq_by_snr}
 \end{figure}
 
-En el cuadro \ref{table:neural_filter_pesq_resume} podemos ver los mismos resultados que en la figura \ref{fig:ch7_pesq_resume} pero en valores porcentuales:
-
-\begin{table}[ht]
+\begin{table}
 	\centering
 	\begin{tabular}{ |c|c|c|c|c|c|c|c| } 
 		\hline
-		SNR [dB] & $-5$ & $0$ & $5$ & $10$ & $15$ & $20$ & $\inf$ \\ 
+		SNR [dB] & $-5$ & $0$ & $5$ & $10$ & $15$ & $20$ & Media \\ 
 		\hline
-		$\Delta \textbf{PESQ Valor medio}$ & 6\%  & 15\%  & 20\% & 19\% & 22\% & 10\% & 2\% \\
+		PESQ - Ruidosa & 1.22 & 1.59 & 1.99 & 2.42 & 2.83 & 3.20 & 2.20 \\
+		PESQ - Filtrada & 1.38 & 1.86 & 2.31 & 2.68 & 2.96 & 3.23 & 2.40 \\
 		\hline
 	\end{tabular}
-	\caption{Medida $\Delta \textbf{PESQ Valor medio}$ para cada valor de SNR.}
-	\label{table:neural_filter_pesq_resume}
+	\caption{PESQ en función de la SNR.}
+	\label{table:ch7_pesq_by_snr}
 \end{table}
 
-En la figura \ref{fig:ch7_pesq_resume_by_noise} podemos ver le medida PESQ en función del tipo de ruido. 
+En la figura \ref{fig:ch7_pesq_by_noise_type} podemos ver la medida PESQ en función del tipo de ruido. Se observa que para todas las clases de ruido, el filtro neuronal, en promedio, logró mejorar la calidad de las señales ruidosas. Este comportamiento va en linea con lo observado en la figura \ref{fig:ch7_pesq_by_snr} donde vimos que para todos los niveles de ruido, se logró una mejora en la calidad. 
+
+Las clases de ruido donde el filtro logró el mejor desempeño fue en; \emph{Aire Acondicionado}, \emph{Aspiradora} e \emph{Impresora}. Esto se debe a que estas clases de ruido son mas estacionarias y por ende le es mas fácil a la red neuronal poder caracterizarlas.
 
 \begin{figure}
 	\centering
-	\centerline{\includegraphics[scale=0.75]{images/ch7/dnn_metric_PESQ_noises.png}}
+	\centerline{\includegraphics[scale=0.75]{images/ch7/pesq_by_noise_type.png}}
 	\caption{PESQ en función del tipo de ruido.}
-	\label{fig:ch7_pesq_resume_by_noise}
+	\label{fig:ch7_pesq_by_noise_type}
 \end{figure} 
 
-En el ruido de la clase \emph{Tipeo}, el filtro neuronal logra un buen desempeño y en los tipos \emph{Tráfico} y \emph{Conversación} no logra una mejora sustancial. Estos dos últimos tipos de ruidos son los mas complejos para ser filtrados por la red neuronal, debido a la complejidad del ruido en si mismo. 
+En el ruido \emph{Vecinos} y \emph{Conversación} hay personas hablando, cuyas voces se mezclan con la señal de habla principal, dificultándole a la red identificar cuál es la señal a filtrar.
 
-En el ruido \emph{Conversación} hay personas hablando, cuyas voces se mezclan con la señal de habla principal, dificultándole a la red identificar cuál es la señal a filtrar.
-
-El ruido \emph{Tráfico} tiene una complejidad inherente, debido a la gran variedad de sonidos que se pueden encontrar en la vía pública. En el otro extremo, el ruido \emph{Tipeo} es relativamente simple y le resulta sencillo a la red neuronal caracterizarlo y filtrarlo.
-
+El tipo de ruido \emph{Masticar} y el tipo de ruido \emph{Tipeo} resultan ser el mas complejo de filtrar y se debe a que es altamente no-estacionario y de corta duración dificultándole a la red caracterizarlo adecuadamente. 
 
 \subsubsection{Medida STOI}
 
-Se puso a prueba el desempeño del filtro neuronal en el conjunto de pruebas, computando las medidas STOI ya definidas para cada uno de los niveles utilizados. 
+Se puso a prueba el desempeño del filtro neuronal en el conjunto de pruebas, computando las medidas STOI ya definidas, para cada uno de los niveles snr y tipos de ruidos utilizados. 
 
-En la figura \ref{fig:ch7_stoi_resume} podemos ver la medida $\Delta \textbf{STOI Valor medio}$ en función del nivel de ruido. Se observa que la máxima mejora media en STOI se logra para los $\SI{5}{dB}$, y tanto para SNRs menores como mayores, la mejora media en la STOI disminuye.
+En la figura \ref{fig:ch7_stoi_by_snr} podemos ver las medidas \textbf{STOI - Ruidosa} y \textbf{STOI - Filtrada} en función del nivel de ruido. Se observa que la máxima mejora media en STOI se logra para los $\SI{-5}{dB}$, y para SNRs mayores, la mejora media en la STOI disminuye. A partir de los $\SI{5}{dB}$ la señal filtrada tiene menor STOI que la señal ruidosa original. En el cuadro \ref{table:ch7_stoi_by_snr} podemos ver el detalle de los resultados de la figura \ref{fig:ch7_stoi_by_snr}.
 
 \begin{figure}
 	\centering
-	\centerline{\includegraphics[scale=0.70]{images/ch7/objective_metrics/metric_STOI.png}}
+	\centerline{\includegraphics[scale=0.8]{images/ch7/stoi_by_snr.png}}
 	\caption{STOI en función de la SNR.}
-	\label{fig:ch7_stoi_resume}
+	\label{fig:ch7_stoi_by_snr}
 \end{figure}
 
-En el cuadro \ref{table:neural_filter_stoi_resume} podemos ver los mismos resultados que en la figura \ref{fig:ch7_stoi_resume} pero en valores porcentuales:
-
-\begin{table}[ht]
+\begin{table}
 	\centering
 	\begin{tabular}{ |c|c|c|c|c|c|c|c| } 
 		\hline
-		SNR [dB] & $-5$ & $0$ & $5$ & $10$ & $15$ & $20$ & $\inf$ \\ 
+		SNR [dB] & $-5$ & $0$ & $5$ & $10$ & $15$ & $20$ & Media \\ 
 		\hline
-		$\Delta \textbf{STOI Valor medio}$ & 0\%  & 6\%  & 6\% & 5\% & 1\% & 0\% & -2\% \\
+		STOI - Ruidosa & 0.67 & 0.80 & 0.89 & 0.94 & 0.98 & 0.99 & 0.88 \\
+		STOI - Filtrada & 0.70 & 0.81 & 0.89 & 0.93 & 0.95 & 0.96 & 0.87 \\
 		\hline
 	\end{tabular}
-	\caption{Medida $\Delta \textbf{STOI Valor medio}$ para cada valor de SNR.}
-	\label{table:neural_filter_stoi_resume}
+	\caption{STOI en función de la SNR.}
+	\label{table:ch7_stoi_by_snr}
 \end{table}
 
-En la figura \ref{fig:ch7_stoi_resume_by_noise} podemos ver le medida PESQ en función del tipo de ruido. Nuevamente, la red se destacó en el ruido del tipo \emph{Tipeo} pero en las demás clases de ruido no logró una mejora sustancial.
+
+En la figura \ref{fig:ch7_stoi_by_noise_type} podemos ver la medida STOI en función del tipo de ruido. A diferencia de la medida PESQ, la red no logró, en promedio, mejorar la inteligibilidad de las señales ruidosas. Como vimos en la figura \ref{fig:ch7_stoi_by_snr}, a bajos SNRs logra una pequeña mejora y a altos SNRs hay una degradación importante, esta combinación genera que en promedio, la red no pueda lograr mejorar la inteligibilidad para los distintos tipos de ruidos.
 
 \begin{figure}
 	\centering
-	\centerline{\includegraphics[scale=0.75]{images/ch7/dnn_metric_STOI_noises.png}}
+	\centerline{\includegraphics[scale=0.8]{images/ch7/stoi_by_noise_type.png}}
 	\caption{STOI en función del tipo de ruido.}
-	\label{fig:ch7_stoi_resume_by_noise}
+	\label{fig:ch7_stoi_by_noise_type}
 \end{figure} 
+
 
 \subsubsection{Error cuadrático medio y nivel de ruido}
 
-Dada la señal de habla sin ruido $s_p(n)$, la señal filtrada $\hat{s}_p(n)$ y la cantidad de señales de audio $P$, en la base de datos de pruebas, así como con el filtro adaptativo, se computa el error cuadrático medio:
+Al igual que para el filtro adaptativo, se obtuvo el error cuadrático medio y el nivel de ruido:
 
 \begin{equation*}
-	\text{ECM}(n) = \frac{1}{P-1} \sum_{p=0}^{P} (\hat{s}_p(n) - s_p(n))^2
+	\text{ECM} = \frac{1}{P-1} \sum_{p=0}^{P} \frac{1}{N_p-1} \sum_{j=0}^{N_p} (\hat{s}_p(n) - s_p(n))^2
 \end{equation*}
-
-\noindent y el nivel de ruido medio al cuadrado:
 
 \begin{equation*}
-	\text{Nivel de ruido}(n) = \frac{1}{P-1} \sum_{p=0}^{P} (n_p(n))^2
+	\text{Nivel de ruido} = \frac{1}{P-1} \sum_{p=0}^{P} \frac{1}{N_p-1} \sum_{n=0}^{N_p} (n_p(n))^2
 \end{equation*}
-
-A diferencia del filtro adaptativo, donde había una correlación directa entre el ECM y las medidas PESQ y STOI, en el filtro neuronal no sucede lo mismo como se puede observar en la figura \ref{fig:ch7_mse_and_noise_level}. En esta gráfica se muestra el error cuadrático medio y el nivel de ruido, promediado para todo $n$ en función de la SNR. 
-
-Podemos observar, que a bajos niveles de SNR, el ECM no es comparable con el nivel de ruido pero si lo es a altos niveles. Sin embargo, en las figuras \ref{fig:ch7_pesq_resume} y \ref{fig:ch7_stoi_resume} vimos que, tanto en bajos niveles de SNR como en altos, el filtro no logró mejorar sustancialmente las medidas PESQ y STOI.
 
 \begin{figure}
 	\centering
-	\centerline{\includegraphics[scale=0.30]{images/ch7/ecm_and_noise_level.png}}
+	\centerline{\includegraphics[scale=0.8]{images/ch7/ecm_and_noise_level.png}}
 	\caption{ECM y Nivel de ruido.}
 	\label{fig:ch7_mse_and_noise_level}
 \end{figure}
 
-
-El filtro neuronal, al trabajar en el dominio de la frecuencia, se ve mayormente afectado en las medidas PESQ y STOI por los errores de estimación que en el caso del filtro adaptativo. En el filtro neuronal, a bajos niveles de SNR, los errores de estimación en el espectro de la señal filtrada  afectan en gran proporción las medidas PESQ y STOI, debido al alto contenido de ruido presente en la señal de entrada.
-
-A altos niveles de SNR, los errores de estimación no afectan en gran proporción las medidas PESQ y STOI debido a que el contenido de ruido es bajo. Sin embargo, como se observa en la figura \ref{fig:ch7_mse_and_noise_level}, a altos niveles de SNR el error de estimación o el error de generalización de la red \cite{deep_learning} se vuelve comparable con nivel de ruido. Esto genera que nuevamente las medidas PESQ y STOI sean cercanas a cero como sucedió en el caso del filtro adaptativo.
+En la figura \ref{fig:ch7_mse_and_noise_level} se muestra el error cuadrático medio y el nivel de ruido como función de la SNR. Podemos observar, que a partir de los $\SI{5}{dB}$ el error cuadrático medio se vuelve comparable con el nivel de ruido. Esto genera que la mejora media en la STOI y PESQ, a partir de los $\SI{5}{dB}$ sean cercanas a 0 o incluso negativas. En estos casos, la señal de habla filtrada tiene un nivel de ruido similar a la señal de habla ruidosa original, pero esta vez inducido por el error de generalización de la red.

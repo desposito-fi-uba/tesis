@@ -1,31 +1,21 @@
-import importlib
 import itertools
 import json
 import os
 import random
 import shutil
 import string
-from dataclasses import dataclass
 from datetime import datetime
-from enum import Enum
 from os import listdir
 from os.path import isfile, join, splitext
-from typing import Optional
 
 import click
 import torch
 
-import numpy as np
-
 from google.cloud import storage
-from torch import nn, optim, sigmoid
-from torch.utils.data import DataLoader
 from tensorboardX import SummaryWriter
 
-from constants import FilterType, OptimizerType
-import runsettings
-from dnnmetrics import MetricsEvaluator
-from realtimednnfilterdatasethandler import RealTimeNoisySpeechDatasetWithTimeFrequencyFeatures
+from runsettings import RunSettings
+from dnnmodelevaluator import ModelEvaluator
 
 
 @click.command()
@@ -34,19 +24,20 @@ from realtimednnfilterdatasethandler import RealTimeNoisySpeechDatasetWithTimeFr
 @click.option('--input-dir', prompt='Dataset to be used while training', type=str)
 @click.option('--experiment-name', prompt='Experiment name', type=str)
 @click.option('--resume-with-model', required=False, help='Name of the model to be used to resume training', type=str)
-@click.option('--overload-settings', required=False, help='Settings to be used', type=str)
 @click.option('--use-gpu', required=False, help='GPU must be used if available', type=bool)
 @click.option('--resume-from-model', required=False, help='Resume from model if available', type=bool)
-def train(epochs, output_dir, input_dir, experiment_name, resume_with_model, overload_settings, use_gpu,
-          resume_from_model):
+@click.option('--overload-settings', required=False, help='Settings to be used', type=str)
+def train(
+        epochs, output_dir, input_dir, experiment_name, resume_with_model, use_gpu, resume_from_model, overload_settings
+):
+    run_settings = RunSettings()
+    
     if use_gpu is not None and not use_gpu:
-        runsettings.device = torch.device("cpu")
+        run_settings.device = torch.device("cpu")
 
     if resume_from_model is None:
         resume_from_model = True
 
-    print('Running on {}'.format(runsettings.device))
-    
     if not experiment_name:
         experiment_name = datetime.now().strftime('%Y%m%d_%H%M%S')
 
@@ -64,20 +55,22 @@ def train(epochs, output_dir, input_dir, experiment_name, resume_with_model, ove
         with open(overloaded_settings_path, 'r') as f:
             overloaded_settings = json.load(f)
             for config_key, config_value in overloaded_settings.items():
-                setattr(runsettings, config_key, config_value)
+                setattr(run_settings, config_key, config_value)
 
-    print('Running in mode {}'.format(runsettings.filter_type))
-    print('Running with features {}'.format(runsettings.features_type))
-    print('Running with optimizer {}'.format(runsettings.optimizer_type))
+    print('Running on {}'.format(torch.device(run_settings.device)))
+    print('Running in mode {}'.format(run_settings.filter_type))
+    print('Running with features {}'.format(run_settings.features_type))
+    print('Running with optimizer {}'.format(run_settings.optimizer_type))
 
     experiment_id = experiment_name
     logs_path = 'logs'
 
     event_logs_dir = join(output_dir, logs_path, experiment_id)
 
-    dataset_path = os.path.join(os.getcwd(), 'tmp', 'dataset')
-    storage_client = storage.Client()
+    storage_client = None
+    dataset_path = input_dir
     if 'gs' in input_dir:
+        storage_client = storage.Client()
         print('Downloading dataset from {}'.format(input_dir))
         bucket_name_and_file_path = input_dir.split('gs://')[1]
         bucket_name = bucket_name_and_file_path.split('/', 1)[0]
@@ -94,11 +87,22 @@ def train(epochs, output_dir, input_dir, experiment_name, resume_with_model, ove
             tar_dataset_path = input_dir
 
     if tar_dataset_path:
-        print('Extracting dataset to {}'.format(dataset_path))
-        shutil.unpack_archive(tar_dataset_path, dataset_path)
-        dataset_path = os.path.join(dataset_path, os.listdir(dataset_path)[0])
-    else:
-        dataset_path = input_dir
+        dataset_extracted_path = os.path.join(os.getcwd(), 'tmp', 'extracted_dataset')
+        print('Extracting dataset to {}'.format(dataset_extracted_path))
+
+        shutil.unpack_archive(tar_dataset_path, dataset_extracted_path)
+        print(f'New directory tree is {[x[0] for x in os.walk(dataset_extracted_path)]}')
+
+        dataset_path = None
+        for (root, dirs, files) in os.walk(dataset_extracted_path):
+            if files:
+                dataset_path = root
+                break
+
+        if not dataset_path:
+            raise RuntimeError('Dataset path not found')
+
+        print(f'Selected dataset path is {dataset_path}')
 
     print('Looking for a model to resume from in {}'.format(output_dir))
     if 'gs' in output_dir:
@@ -123,7 +127,7 @@ def train(epochs, output_dir, input_dir, experiment_name, resume_with_model, ove
                 chosen_blob.download_to_filename(temp_file_path)
 
                 print('Model {} loaded'.format(file_name))
-                runsettings.net.load_state_dict(torch.load(temp_file_path, map_location=runsettings.device))
+                run_settings.net.load_state_dict(torch.load(temp_file_path, map_location=run_settings.device))
     else:
         if resume_from_model:
             if not resume_with_model:
@@ -140,168 +144,47 @@ def train(epochs, output_dir, input_dir, experiment_name, resume_with_model, ove
 
             if latest_created_model:
                 print('Model {} loaded'.format(latest_created_model))
-                runsettings.net.load_state_dict(torch.load(latest_created_model))
+                run_settings.net.load_state_dict(torch.load(latest_created_model))
 
     print('Preparing to train')
-    train_dataset_path = os.path.join(dataset_path, 'train.csv')
-    train_dataset = RealTimeNoisySpeechDatasetWithTimeFrequencyFeatures(
-        dataset_path, train_dataset_path, runsettings.fs, runsettings.windows_time_size,
-        runsettings.overlap_percentage, runsettings.fft_points, runsettings.time_feature_size,
-        randomize=runsettings.randomize_data, max_samples=runsettings.train_on_n_samples,
-        normalize=runsettings.normalize_data, predict_on_time_windows=runsettings.predict_on_time_windows
-    )
-
-    train_data_loader = DataLoader(train_dataset, batch_size=runsettings.train_batch_size)
-
-    if runsettings.optimizer_type == OptimizerType.SGD_WITH_MOMENTUM:
-        optimizer = optim.SGD(
-            runsettings.net.parameters(), lr=runsettings.lr, momentum=runsettings.momentum,
-            weight_decay=runsettings.decay
-        )
-    elif runsettings.optimizer_type == OptimizerType.ADAM:
-        optimizer = optim.Adam(
-            runsettings.net.parameters(), lr=runsettings.lr, betas=runsettings.betas, weight_decay=runsettings.decay
-        )
-    else:
-        raise RuntimeError('Unknown optimizer type {}'.format(runsettings.optimizer_type))
+    train_csv_path = os.path.join(dataset_path, 'train.csv')
+    test_csv_path = os.path.join(dataset_path, 'test.csv')
 
     models_names = [(
             experiment_id +
             '-' +
             ''.join(random.choices(string.ascii_letters + string.digits, k=16)) +
             '.pth'
-        ) for i in range(10)
-    ]
+    ) for i in range(10)]
     models_names_iterator = itertools.cycle(models_names)
 
-    runsettings.net.to(runsettings.device)
-    runsettings.net.train()
+    run_settings.net.to(run_settings.device)
 
     print('Starting training with {} epochs'.format(epochs))
-    batches_counter = runsettings.net.current_batch_number.item()
+    batches_counter = run_settings.net.current_batch_number.item()
 
-    print('Output tensorboard events to {}'.format(event_logs_dir))
+    print('Output tensorboard events to {}. Resuming from step {}'.format(event_logs_dir, batches_counter))
     writer = SummaryWriter(log_dir=event_logs_dir, purge_step=batches_counter)
 
-    train_metric_evaluator = MetricsEvaluator(
-        writer, train_dataset, 'train', runsettings.filter_type, runsettings.features_type, runsettings.fs,
-        compute_stoi_and_pesq=runsettings.train_compute_stoi_and_pesq, generate_audios=runsettings.train_generate_audios
+    tester = None
+    if run_settings.test_while_training:
+        tester = ModelEvaluator(
+            writer, dataset_path, test_csv_path, 1, 'test', run_settings.test_on_n_samples,
+            run_settings.test_batch_size, run_settings.test_generate_audios, output_dir, False, storage_client,
+            run_settings.show_metrics_every_n_batches,
+            push_metrics_every_x_batches=False, compute_pesq_and_stoi=run_settings.test_compute_stoi_and_pesq
+        )
+
+    trainer = ModelEvaluator(
+        writer, dataset_path, train_csv_path, epochs, 'train', run_settings.train_on_n_samples,
+        run_settings.train_batch_size, run_settings.train_generate_audios, output_dir, True, storage_client,
+        run_settings.show_metrics_every_n_batches,
+        testing_model_evaluator=tester, models_names_iterator=models_names_iterator,
+        push_metrics_every_x_batches=True, compute_pesq_and_stoi=run_settings.train_compute_stoi_and_pesq,
+        test_model_every_x_batches=run_settings.test_while_training_every_n_batches,
+        save_model_every_x_batches=run_settings.save_model_every_n_batches,
     )
-
-    model_evaluator = ModelEvaluator(writer, dataset_path)
-
-    for i_epoch in range(epochs):
-
-        for i_batch, sample_batched in enumerate(train_data_loader):
-            runsettings.net.train()
-            batches_counter += 1
-
-            noisy_speeches = sample_batched['noisy_speech']
-            noisy_output_speeches = sample_batched['noisy_output_speech']
-            clean_speeches = sample_batched['clean_speech']
-            noises = sample_batched['noise']
-            samples_idx = sample_batched['sample_idx']
-
-            noisy_speeches = noisy_speeches.to(runsettings.device)
-
-            optimizer.zero_grad()
-
-            outputs = runsettings.net(noisy_speeches)
-            if runsettings.normalize_data:
-                outputs = sigmoid(outputs)
-
-            clean_speeches = clean_speeches.to(runsettings.device)
-            mse_loss = runsettings.criterion(outputs, clean_speeches)
-
-            mse_loss.backward()
-
-            optimizer.step()
-
-            outputs = outputs.cpu()
-
-            if runsettings.filter_type == FilterType.NOISE_FILTER:
-                clean_speeches = clean_speeches.cpu()
-            else:
-                noises = noises.cpu()
-
-            accumulated_samples_idx = train_dataset.accumulate_filtered_frames(outputs, samples_idx)
-            train_metric_evaluator.add_metrics(
-                mse_loss, outputs, clean_speeches, noises, noisy_output_speeches, accumulated_samples_idx
-            )
-
-            if batches_counter % runsettings.show_metrics_every_n_batches == 0:
-                train_metric_evaluator.push_metrics(batches_counter, i_epoch + 1)
-
-            if runsettings.eval_training and batches_counter % runsettings.eval_every_n_batches == 0:
-                model_evaluator.eval(batches_counter, i_epoch + 1)
-
-            if batches_counter % runsettings.save_model_every_n_batches == 0:
-                runsettings.net.current_batch_number = torch.tensor(batches_counter)
-                output_model_name = next(models_names_iterator)
-                if 'gs' in output_dir:
-                    temp_file_path = os.path.join(os.getcwd(), 'tmp', output_model_name)
-                    torch.save(runsettings.net.state_dict(), temp_file_path)
-                    bucket_name = output_dir.split('gs://')[1]
-                    bucket = storage_client.bucket(bucket_name)
-                    blob = bucket.blob(output_model_name)
-                    blob.upload_from_filename(temp_file_path)
-                else:
-                    file_path = os.path.join(output_dir, output_model_name)
-                    torch.save(runsettings.net.state_dict(), file_path)
-
-                print('Model store with name {} in {}'.format(output_model_name, output_dir))
-
-
-class ModelEvaluator(object):
-    def __init__(self, writer, dataset_path):
-        self.val_dataset_path = os.path.join(dataset_path, 'val.csv')
-        self.dataset_path = dataset_path
-        self.writer = writer
-
-    def eval(self, batches_counter, epochs_counter):
-        val_dataset = RealTimeNoisySpeechDatasetWithTimeFrequencyFeatures(
-            self.dataset_path, self.val_dataset_path, runsettings.fs, runsettings.windows_time_size,
-            runsettings.overlap_percentage, runsettings.fft_points, runsettings.time_feature_size,
-            randomize=runsettings.randomize_data, max_samples=runsettings.eval_on_n_samples,
-            normalize=runsettings.normalize_data, predict_on_time_windows=runsettings.predict_on_time_windows
-        )
-
-        data_loader = DataLoader(val_dataset, batch_size=runsettings.eval_batch_size)
-        val_metric_evaluator = MetricsEvaluator(
-            self.writer, val_dataset, 'val', runsettings.filter_type, runsettings.features_type, runsettings.fs,
-            compute_stoi_and_pesq=runsettings.eval_compute_stoi_and_pesq,
-            generate_audios=runsettings.eval_generate_audios
-        )
-
-        with torch.no_grad():
-            runsettings.net.eval()
-            for i_batch, sample_batched in enumerate(data_loader):
-                noisy_speeches = sample_batched['noisy_speech']
-                noisy_output_speeches = sample_batched['noisy_output_speech']
-                clean_speeches = sample_batched['clean_speech']
-                noises = sample_batched['noise']
-                samples_idx = sample_batched['sample_idx']
-
-                noisy_speeches = noisy_speeches.to(runsettings.device)
-
-                outputs = runsettings.net(noisy_speeches)
-
-                if runsettings.normalize_data:
-                    outputs = sigmoid(outputs)
-
-                clean_speeches = clean_speeches.to(runsettings.device)
-                mse_loss = runsettings.criterion(outputs, clean_speeches)
-
-                outputs = outputs.cpu()
-
-                clean_speeches = clean_speeches.cpu()
-
-                accumulated_samples_idx = val_dataset.accumulate_filtered_frames(outputs, samples_idx)
-                val_metric_evaluator.add_metrics(
-                    mse_loss, outputs, clean_speeches, noises, noisy_output_speeches, accumulated_samples_idx
-                )
-
-        val_metric_evaluator.push_metrics(batches_counter, epochs_counter)
+    trainer.evaluate(batches_counter)
 
 
 if __name__ == "__main__":

@@ -1,17 +1,6 @@
 \section{Experimentación con el filtro adaptativo}
 
-En la presente sección se describe el proceso de experimentación llevado a cabo para evaluar el rendimiento del filtro adaptativo.
-
-Para la evaluación se utilizó la base de datos construida a partir del proceso descrito en la sección \ref{sec:audio_db}.
-
-La base de datos fue dividida en dos conjuntos disjuntos:
-
-\begin{itemize}
-	\item Conjunto de entrenamiento: El filtro basado en redes neuronales depende de un conjunto de entrenamiento que se encarga de optimizar los parámetros de la red de tal manera que el error sea el menor posible. El filtro adaptativo no requiere de un conjunto de entrenamiento ya que sus parámetros son optimizados en tiempo real.
-	\item Conjunto de prueba: Para evaluar cada filtro de manera objetiva, se utiliza el conjunto de pruebas.
-\end{itemize}
-
-Una división comúnmente utilizada es la de asignar el 70\% de las muestras en el conjunto de entrenamiento y el 30\% restante, utilizarlo para el conjunto de prueba. Dicha práctica fue la utilizada en el presente trabajo.
+En la presente sección se describe el proceso de experimentación llevado a cabo para evaluar el rendimiento del filtro adaptativo. Para la evaluación se utilizó el conjunto de prueba de la base de datos descrita en la sección \ref{sec:audio_db}.
 
 El proceso de pruebas consistió en ingresar al filtro adaptativo señales ruidosas, obtener la respuesta del filtro y compararla con la señal original sin ruido, por medio de las métricas STOI y PESQ.
 
@@ -65,145 +54,158 @@ Desarrollando la recursión y eligiendo $\epsilon(i) = \frac{\lambda^{i+1} \epsi
 
 \subsubsection{Medida PESQ}
 
-Dado el conjunto de audios de prueba con un largo igual a $P$, las señales de habla ruidosas $d_p(n)$, y las señales de habla filtradas $\hat{s}_p(n)$, se definieron las siguientes seis medidas:
+Dado el conjunto de audios de prueba con un largo igual a $P$, las señales de habla ruidosas $d_p(n)$, las señales de habla sin ruido $s_p(n)$, y las señales de habla filtradas $\hat{s}_p(n)$, se definieron las siguientes medidas.
 
-\begin{itemize}
-	\item $\textbf{Min PESQ}$: Medida PESQ entre la señal de habla ruidosa y la señal de habla sin ruido. Establece una cota inferior en la medida PESQ que debería tener la señal de habla filtrada.
-	\item $\textbf{Min PESQ Valor medio}$: Valor medio de la medida $\textbf{Min PESQ}$.
-	\item $\textbf{PESQ}$: Medida PESQ entre la señal de habla filtrada y la señal de habla sin ruido.
-	\item $\textbf{PESQ Valor medio}$: Valor medio de la medida $\textbf{PESQ}$.
-	\item $\Delta \textbf{PESQ}$: Mejora en la medida \textbf{PESQ} por efecto del filtro.
-	\item $\Delta \textbf{PESQ Valor medio}$: Valor medio de la medida $\Delta \textbf{PESQ}$.
-\end{itemize}
+\vspace{5mm}
 
-Formalmente:
+\noindent $\textbf{PESQ - Ruidosa}$
 
-\begin{itemize}
-	\item $\textbf{Min PESQ} = PESQ\{ d_p(n) \}$
-	\item $\textbf{Min PESQ Valor medio} = \frac{1}{P-1} \sum_{p=0}^{P-1} PESQ\{ d_p(n) \}$
-	\item $\textbf{PESQ} = PESQ\{ \hat{s}_p(n) \}$
-	\item $\textbf{PESQ Valor medio} = \frac{1}{P-1} \sum_{p=0}^{P-1} PESQ\{ \hat{s}_p(n) \}$
-	\item $\Delta \textbf{PESQ} = \left( PESQ\{ \hat{s}_p(n) \} - PESQ\{ d_p(n) \} \right)$
-	\item $\Delta \textbf{PESQ Valor medio} = \frac{1}{p-1} \sum_{p=0}^{P-1} \left( PESQ\{ \hat{s}_p(n) \} - PESQ\{ d_p(n) \} \right)$
-\end{itemize}
+\vspace{5mm}
+
+Medida PESQ entre la señal de habla ruidosa y la señal de habla sin ruido. Establece una cota inferior en la medida PESQ que debería tener la señal de habla filtrada.
+
+\begin{equation*}
+	\textbf{PESQ - Ruidosa} = \frac{1}{P-1} \sum_{p=0}^{P-1} PESQ\{ s_p(n), d_p(n) \}
+\end{equation*}
+
+\noindent $\textbf{PESQ - Filtrada}$ 
+
+\vspace{5mm}
+
+Medida PESQ entre la señal de habla filtrada y la señal de habla sin ruido. 
+
+\begin{equation*}
+	\textbf{PESQ - Filtrada} = \frac{1}{P-1} \sum_{p=0}^{P-1} PESQ\{ s_p(n), \hat{s}_p(n) \}
+\end{equation*}
 
 Uno de los objetivos del filtro de ruido es mejorar, o al menos mantener, la calidad de la señal de habla, es por eso que la medida PESQ calculada para la señal ruidosa $d(n)$ nos da una cota inferior, es decir se espera que:
 
 \begin{equation*}
-	PESQ\{ \hat{s}_p(n) \} \geq PESQ\{ d_p(n) \}
+	\text{PESQ - Filtrada} \geq \text{PESQ - Ruidosa}
 \end{equation*}
-
-El valor $\Delta \textbf{PESQ Valor medio}$ nos dirá en promedio cuánto logrará mejorar la PESQ, el filtro en evaluación.
 
 Como vimos en la sección \ref{sec:metrics}, las señales de habla ruidosa fueron construidas utilizando distintos valores de SNR. Una forma de evaluar el filtro es analizar qué tanto cambia la PESQ para cada valor de SNR utilizado.
 
-En la figura \ref{fig:ch6_pesq_resume} podemos ver la medida $\Delta \textbf{PESQ Valor medio}$ para el total de señales de habla, para cada valor de SNR. En la gráfica se observa que una vez superado los $\SI{15}{dB}$, el filtro empeoró la calidad de las señales de audio.
+En la figura \ref{fig:ch6_pesq_by_snr} podemos ver las medidas \textbf{PESQ - Ruidosa} y \textbf{PESQ - Filtrada} en función del nivel de ruido. En la gráfica se observa que una vez superado los $\SI{10}{dB}$, el filtro no logró mejorar la calidad de las señales de habla ruidosas, incluso genero un deterioro de la mismo.
 
 \begin{figure}
 	\centering
-	\centerline{\includegraphics[scale=0.75]{images/ch6/af/objective_metrics/metric_PESQ.png}}
+	\centerline{\includegraphics[scale=0.75]{images/ch6/pesq_by_snr.png}}
 	\caption{PESQ en función de la SNR.}
-	\label{fig:ch6_pesq_resume}
+	\label{fig:ch6_pesq_by_snr}
 \end{figure}
 
-A medida que la SNR fue aumentando, le resultó cada vez más difícil al filtro poder mejorar el valor de base de la medida $PESQ$. Incluso en los casos de $SNR = \SI{20}{dB}$ y $SNR = \inf \; dB$, el filtro la empeoró. En la siguiente sección se analiza este comportamiento mas en detalle.
+A medida que la SNR fue aumentando, le resultó cada vez más difícil al filtro poder mejorar el valor de base de la medida $PESQ$. En la siguiente sección se analiza este comportamiento mas en detalle. En la tabla \ref{table:pesq_by_snr} podemos ver el detalle de los resultados de la figura \ref{fig:ch6_pesq_by_snr}.
 
-En la tabla \ref{table:pesq_resume} podemos ver los mismos resultados que en la figura \ref{fig:ch6_pesq_resume} pero en valores porcentuales.
-
-\begin{table}[ht]
+\begin{table}
 	\centering
 	\begin{tabular}{ |c|c|c|c|c|c|c|c| } 
 		\hline
-		SNR [dB] & $-5$ & $0$ & $5$ & $10$ & $15$ & $20$ & $\inf$ \\ 
+		SNR [dB] & $-5$ & $0$ & $5$ & $10$ & $15$ & $20$ & Media \\ 
 		\hline
-		$\Delta \textbf{PESQ Valor medio}$ & 43\%  & 32\% & 23\% & 13\% & 3\% & -12\% & -10\% \\ 
+		PESQ - Ruidosa & 1.22 & 1.58 & 1.99 & 2.42 & 2.82 & 3.20 & 2.20 \\
+		PESQ - Filtrada & 1.57 & 1.92 & 2.19 & 2.40 & 2.48 & 2.40 & 2.16 \\
 		\hline
 	\end{tabular}
-	\caption{Medida $\Delta \textbf{PESQ Valor medio}$ para cada valor de SNR.}
-	\label{table:pesq_resume}
+	\caption{PESQ en función de la SNR.}
+	\label{table:pesq_by_snr}
 \end{table}
 
-Otra forma de evaluar el filtro es analizar cómo varían las medidas en función del tipo de ruido. En la figura \ref{fig:ch6_pesq_resume_by_noise} podemos ver la medida PESQ en función del tipo de ruido.
+Otra forma de evaluar el filtro es analizar cómo varían las medidas en función del tipo de ruido. En la figura \ref{fig:ch6_pesq_by_noise_type} podemos ver la medida PESQ en función del tipo de ruido.
 
 \begin{figure}
 	\centering
-	\centerline{\includegraphics[scale=0.75]{images/ch6/af_metric_PESQ_noises.png}}
+	\centerline{\includegraphics[scale=0.75]{images/ch6/pesq_by_noise_type.png}}
 	\caption{PESQ en función del tipo de ruido.}
-	\label{fig:ch6_pesq_resume_by_noise}
+	\label{fig:ch6_pesq_by_noise_type}
 \end{figure} 
 
-Si bien los resultados obtenidos son relativamente constantes para cada uno de los tipos de ruido, se observa un mejor desempeño en el ruido del tipo \emph{Tráfico}, en \emph{Tipeo} y en \emph{Conversación}. Los ruidos del tipo \emph{Ladrido} y \emph{Maullido} tienen la característica de ser de corta duración, lo que representa un inconveniente para el filtro adaptativo que necesita cierto tiempo para adaptarse a las nuevas condiciones de ruido y filtrarlo.
+El filtro adaptativo logró mejorar la calidad de las señales ruidosas en los tipos de ruidos; \emph{Conversación}, \emph{Vecinos}, \emph{Aspiradora} e \emph{Impresora}. Para los ruidos del tipo \emph{Tipeo} y \emph{Masticar}, la calidad disminuyó. Estos ruidos tienen la característica de ser de corta duración, lo que representa un inconveniente para el filtro adaptativo que necesita cierto tiempo para adaptarse a las nuevas condiciones de ruido y filtrarlo.
+
+Como se observa en la tabla \ref{table:pesq_by_snr}, en valor medio, la mejora en la PESQ es pequeña y esto explica porque para algunos tipos de ruido vemos una mejora en la calidad y en otros vemos una degradación.
 
 \subsubsection{Medida STOI}
 
-Al igual que para la PESQ, se analizaron las siguientes seis medidas relacionadas con la STOI:
+Al igual que para la PESQ se analizaron las siguientes medidas.
 
-\begin{itemize}
-	\item $\textbf{Min STOI} = STOI\{ d_p(n) \}$
-	\item $\textbf{Min STOI Valor medio} = \frac{1}{P-1} \sum_{p=0}^{P-1} STOI\{ d_p(n) \}$
-	\item $\textbf{STOI} = STOI\{ \hat{s}_p(n) \}$
-	\item $\textbf{STOI Valor medio} = \frac{1}{P-1} \sum_{p=0}^{P-1} STOI\{ \hat{s}_p(n) \}$
-	\item $\Delta \textbf{STOI} = \left( STOI\{ \hat{s}_p(n) \} - STOI\{ d_p(n) \} \right)$
-	\item $\Delta \textbf{STOI Valor medio} = \frac{1}{P-1} \sum_{p=0}^{P-1} \left( STOI\{ \hat{s}_p(n) \} - STOI\{ d_p(n) \} \right)$
-\end{itemize}
+\vspace{5mm}
 
-En la figura \ref{fig:ch6_stoi_resume} podemos ver la medida $\Delta \textbf{STOI Valor medio}$ como función de la SNR. Al igual que para la PESQ, a partir de los $\SI{15}{dB}$ el filtro en lugar de mejorar la inteligibilidad, la empeora.
+\noindent $\textbf{STOI - Ruidosa}$
+
+\vspace{5mm}
+
+Medida STOI entre la señal de habla ruidosa y la señal de habla sin ruido. Establece una cota inferior en la medida STOI que debería tener la señal de habla filtrada.
+
+\begin{equation*}
+	\textbf{STOI - Ruidosa} = \frac{1}{P-1} \sum_{p=0}^{P-1} STOI\{ s_p(n), d_p(n) \}
+\end{equation*}
+
+\noindent $\textbf{STOI - Filtrada}$ 
+
+\vspace{5mm}
+
+Medida STOI entre la señal de habla filtrada y la señal de habla sin ruido. 
+
+\begin{equation*}
+	\textbf{STOI - Filtrada} = \frac{1}{P-1} \sum_{p=0}^{P-1} STOI\{ s_p(n), \hat{s}_p(n) \}
+\end{equation*}
+
+En la figura \ref{fig:ch6_stoi_by_snr} podemos ver las medidas \textbf{STOI - Ruidosa} y \textbf{STOI - Filtrada} en función del nivel de ruido. Al igual que para la PESQ, a partir de los $\SI{10}{dB}$ el filtro en lugar de mejorar la inteligibilidad, la empeora.  En la tabla \ref{table:stoi_by_snr} podemos ver el detalle de los resultados de la figura \ref{fig:ch6_stoi_by_snr}.
 
 \begin{figure}
 	\centering
-	\centerline{\includegraphics[scale=0.75]{images/ch6/af/objective_metrics/metric_STOI.png}}
+	\centerline{\includegraphics[scale=0.75]{images/ch6/stoi_by_snr.png}}
 	\caption{STOI en función de la SNR.}
-	\label{fig:ch6_stoi_resume}
+	\label{fig:ch6_stoi_by_snr}
 \end{figure}
-
-En la tabla \ref{table:stoi_resume} podemos ver los mismos resultados que en la figura \ref{fig:ch6_stoi_resume} pero en valores porcentuales.
 
 \begin{table}[ht]
 	\centering
 	\begin{tabular}{ |c|c|c|c|c|c|c|c| } 
 		\hline
-		SNR [dB] & $-5$ & $0$ & $5$ & $10$ & $15$ & $20$ & $\inf$ \\ 
+		SNR [dB] & $-5$ & $0$ & $5$ & $10$ & $15$ & $20$ & Media \\ 
 		\hline
-		$\Delta \textbf{STOI Valor medio}$ & 26\%  & 14\%  & 8\% & 2\% & -1\% & -4\% & -2\% \\
+		STOI - Ruidosa & 0.67 & 0.80 & 0.89 & 0.94 & 0.97 & 0.99 & 0.88 \\
+		STOI - Filtrada & 0.82 & 0.88 & 0.92 & 0.93 & 0.93 & 0.91 & 0.90 \\
 		\hline
 	\end{tabular}
-	\caption{Medida $\Delta \textbf{STOI Valor medio}$ para cada valor de SNR.}
-	\label{table:stoi_resume}
+	\caption{STOI en función de la SNR.}
+	\label{table:stoi_by_snr}
 \end{table}
 
-También se analizó la medida STOI como función del tipo de ruido. En la figura \ref{fig:ch6_stoi_resume_by_noise} podemos ver dicha gráfica. Se observa la misma tendencia que para la medida PESQ, es decir, el desempeño en los ruidos \emph{Tráfico}, \emph{Tipeo} y \emph{Conversación} fue levemente mejor que en \emph{Ladrido} y \emph{Maullido}.
+También se analizó la medida STOI como función del tipo de ruido. En la figura \ref{fig:ch6_stoi_by_noise_type} podemos ver dicha gráfica. A diferencia de PESQ, se observa que a excepción de los ruidos del tipo \emph{Tipeo} y \emph{Masticar}, el filtro adaptativo, en promedio, logró una mejora de la inteligibilidad. La diferencia respecto a PESQ se explica mirando la figura \ref{fig:ch6_stoi_by_snr} donde podemos ver que para bajos SNRs, la mejora en la inteligibilidad es mayor que la mejora en la calidad, compensando así la degradación a altos niveles de SNR.
 
 \begin{figure}
 	\centering
-	\centerline{\includegraphics[scale=0.75]{images/ch6/af_metric_STOI_noises.png}}
+	\centerline{\includegraphics[scale=0.75]{images/ch6/stoi_by_noise_type.png}}
 	\caption{STOI en función del tipo de ruido.}
-	\label{fig:ch6_stoi_resume_by_noise}
+	\label{fig:ch6_stoi_by_noise_type}
 \end{figure} 
 
 \subsubsection{Error cuadrático medio y nivel de ruido}
 
-Dada la señal de habla sin ruido $s_p(n)$, la señal filtrada $\hat{s}_p(n)$ y $P$ la cantidad de señales de audio en la base de datos de pruebas, se computa el error cuadrático medio como:
+Dada las señales de habla sin ruido $s_p(n)$, las señales filtrada $\hat{s}_p(n)$, las señales de ruido $n_p(n)$, $N_p$ el largo de la señal $p$ y $P$ la cantidad de señales de audio en la base de datos de pruebas, se computa el error cuadrático medio, para cada uno de los niveles de ruido, como:
 
 \begin{equation*}
-	\text{ECM}(n) = \frac{1}{P-1} \sum_{p=0}^{P} (\hat{s}_p(n) - s_p(n))^2
+	\text{ECM} = \frac{1}{P-1} \sum_{p=0}^{P} \frac{1}{N_p-1} \sum_{n=0}^{N_p} (\hat{s}_p(n) - s_p(n))^2
 \end{equation*}
 
 También definimos el nivel de ruido medio al cuadrado como:
 
 \begin{equation*}
-	\text{Nivel de ruido}(n) = \frac{1}{P-1} \sum_{p=0}^{P} (n_p(n))^2
+	\text{Nivel de ruido} = \frac{1}{P-1} \sum_{p=0}^{P} \frac{1}{N_p-1} \sum_{j=0}^{N_p} (n_p(n))^2
 \end{equation*}
-
-En la figura \ref{fig:ch6_mse_and_noise_level} podemos ver seis gráficas que contiene el error cuadrático medio y el nivel de ruido para cada SNR.
 
 \begin{figure}
 	\centering
-	\centerline{\includegraphics[scale=0.35]{images/ch6/af/mse_and_noise_level.png}}
+	\centerline{\includegraphics[scale=0.8]{images/ch6/ecm_and_noise_level.png}}
 	\caption{ECM y Nivel de ruido.}
 	\label{fig:ch6_mse_and_noise_level}
 \end{figure}
 
-En las figuras \ref{fig:ch6_pesq_resume} y \ref{fig:ch6_stoi_resume} vimos que a medida que la SNR aumentó, al filtro le resultó cada vez más difícil lograr una mejora en las medidas PESQ y STOI. Una explicación a este comportamiento lo podemos ver en la figura \ref{fig:ch6_mse_and_noise_level}, donde observamos que a medida que la SNR aumenta, el error cuadrático medio se vuelve comparable con el nivel ruido. Esto lleva a que las medidas $\Delta \textbf{PESQ Valor medio}$ y $\Delta \textbf{STOI Valor medio}$ se acerquen a cero o incluso se vuelvan negativas. En estos casos, la señal de habla filtrada tiene un nivel de ruido similar a la señal de habla ruidosa original, pero esta vez inducido por el error en estado estacionario del filtro adaptativo \cite{fundamentals_of_adaptive_filtering}.
+En la figura \ref{fig:ch6_mse_and_noise_level} podemos el error cuadrático medio y el nivel de ruido como función de la SNR. En las figuras \ref{fig:ch6_pesq_by_snr} y \ref{fig:ch6_stoi_by_snr} vimos que a medida que la SNR aumentó, al filtro le resultó cada vez más difícil lograr una mejora en las medidas PESQ y STOI. 
+
+Una explicación a este comportamiento lo podemos ver en la figura \ref{fig:ch6_mse_and_noise_level}, donde observamos que a medida que la SNR aumenta, el error cuadrático medio se vuelve comparable con el nivel ruido. Esto lleva a que las medidas  \textbf{PESQ - Filtrada} y \textbf{STOI - Filtrada} sean similares o menores que lo niveles base \textbf{PESQ - Ruidosa} y \textbf{STOI - Ruidosa}, respectivamente. En estos casos, la señal de habla filtrada tiene un nivel de ruido similar a la señal de habla ruidosa original, pero esta vez inducido por el error en estado estacionario del filtro adaptativo \cite{fundamentals_of_adaptive_filtering}.
 
 \subsubsection{Variación de los coeficientes en función del tiempo}
 
@@ -211,30 +213,9 @@ Es interesante ver cómo se comportan los coeficientes del filtro para algunos e
 
 \begin{figure}
 	\centering
-	\centerline{\includegraphics[scale=0.35]{images/ch6/af/weights/weights.png}}
+	\centerline{\includegraphics[scale=0.35]{images/ch6/weights.png}}
 	\caption{Variación de los coeficientes en función del tiempo.}
 	\label{fig:ch6_variacion_temporal_de_coeficientes}
 \end{figure}
 
 Se observa como los coeficientes se adaptan a medida que cambia la correlación entre los ruidos $n_1(n)$ y $n_2(n)$. Una vez que encuentran la nueva adaptación que minimiza el error, permanecen en un estado estacionario hasta que ocurre un nuevo cambio en el entorno.
-
-\subsubsection{Variación de las señales involucradas en el filtrado}
-
-Al igual que para el caso de los coeficientes del filtro adaptativo, es interesante ver un ejemplo concreto de señal filtrada. La figura \ref{fig:ch6_señal_ruido_habla} muestra un ejemplo de señal de audio filtrada, donde se pueden observar; los coeficientes del filtro, el ruido que corrompió la señal de audio original, el ruido estimado, la señal de habla y la señal de habla estimada . En la figura \ref{fig:ch6_señal_ruido_habla_aumentada} se muestra lo mismo que en \ref{fig:ch6_señal_ruido_habla} pero aumentada entre las muestras $19000$ y $26000$.
-
-\begin{figure}
-	\centering
-	\centerline{\includegraphics[scale=0.35]{images/ch6/af/signals/signals.png}}
-	\caption{Señales de ruido y habla.}
-	\label{fig:ch6_señal_ruido_habla}
-\end{figure}
-
-
-\begin{figure}
-	\centering
-	\centerline{\includegraphics[scale=0.35]{images/ch6/af/signals/zoomed_signals.png}}
-	\caption{Señales de ruido y habla aumentadas.}
-	\label{fig:ch6_señal_ruido_habla_aumentada}
-\end{figure}
-
-En \ref{fig:ch6_señal_ruido_habla_aumentada} podemos ver que tanto el ruido como la señal de habla fueron estimadas con gran precisión.
